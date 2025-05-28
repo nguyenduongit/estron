@@ -17,11 +17,11 @@ const Card: React.FC<CardProps> = ({ children, style, ...props }) => {
 
 const styles = StyleSheet.create({
   card: {
-    backgroundColor: theme.colors.cardBackground,
-    borderRadius: theme.borderRadius.md,
-    padding: theme.spacing.md,
-    marginBottom: theme.spacing.md,
-    ...theme.shadow.sm,
+    backgroundColor: theme.colors.cardBackground, // Giữ nguyên key, giá trị đã cập nhật trong theme
+    borderRadius: theme.borderRadius['level-4'], // Thay md bằng level-4
+    padding: theme.spacing['level-4'],           // Thay md bằng level-4
+    marginBottom: theme.spacing['level-4'],    // Thay md bằng level-4
+    ...theme.shadow.sm,                         // Giữ nguyên
   },
 });
 

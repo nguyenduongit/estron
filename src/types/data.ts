@@ -1,38 +1,78 @@
 // src/types/data.ts
 export interface Quota {
-  id: string; // UUID, duy nhất cho mỗi định mức
-  stageCode: string; // Mã công đoạn (người dùng nhập, nên là duy nhất)
-  dailyQuota: number; // Định mức ngày
-  order: number; // Để sắp xếp thứ tự hiển thị
+  id: string;
+  stageCode: string;
+  dailyQuota: number;
+  order: number;
 }
 
 export interface ProductionEntry {
-  id: string; // UUID, duy nhất cho mỗi lần nhập
-  date: string; // Định dạng YYYY-MM-DD (khóa chính cùng với stageCode cho một ngày)
-  stageCode: string; // Mã công đoạn, tham chiếu đến Quota.stageCode
-  quantity: number; // Số lượng sản xuất
+  id: string; // UUID, duy nhất cho mỗi lần nhập (từ Supabase)
+  user_id?: string | null;
+  product_code: string; // Mã công đoạn/sản phẩm, tham chiếu đến QuotaSetting.product_code
+  date: string; // Định dạng YYYY-MM-DD
+  po?: string | null; // Đổi thành string | null theo schema mới
+  quantity?: number | null;
+  quota_percentage?: number; // Mặc định là 100 trên DB
+  box?: string | null; // Đổi thành string | null theo schema mới
+  batch?: string | null; // Đổi thành string | null theo schema mới
+  created_at?: string;
+  verified?: boolean | null;
 }
 
-// Dùng để nhóm các ProductionEntry theo ngày cho việc hiển thị trên Card
 export interface DailyProductionData {
-  date: string; // YYYY-MM-DD
-  dayOfWeek: string; // Thứ trong tuần (ví dụ: "Thứ 2")
-  formattedDate: string; // Ngày tháng định dạng (ví dụ: "21/04")
+  date: string;
+  dayOfWeek: string;
+  formattedDate: string;
   entries: Array<{
-    id: string; // <<<< THÊM DÒNG NÀY - ID của ProductionEntry
-    stageCode: string;
+    id: string;
+    stageCode: string; // product_code từ ProductionEntry
     quantity: number;
-    workAmount?: number; // Số công = quantity / dailyQuota (của stageCode đó)
+    workAmount?: number;
+    po?: string | null; // Đổi thành string | null
+    box?: string | null; // Đổi thành string | null
+    batch?: string | null; // Đổi thành string | null
   }>;
-  totalWorkForDay?: number; // Tổng công của ngày
+  totalWorkForDay?: number;
 }
 
-// ++ THÊM MỚI ++
-// Interface for supplementary daily data (nghỉ, tăng ca, họp)
 export interface DailySupplementaryData {
-  date: string; // Primary key: YYYY-MM-DD, duy nhất cho mỗi entry
-  leaveHours?: number | null; // Số giờ nghỉ
-  overtimeHours?: number | null; // Số giờ tăng ca
-  meetingMinutes?: number | null; // Số phút họp/đào tạo
+  date: string;
+  leaveHours?: number | null;
+  overtimeHours?: number | null;
+  meetingMinutes?: number | null;
 }
-// ++ KẾT THÚC THÊM MỚI ++
+
+export interface QuotaSetting {
+  product_code: string; // PK
+  product_name: string;
+  level_0_9?: number | null;
+  level_1_0?: number | null;
+  level_1_1?: number | null;
+  level_2_0?: number | null;
+  level_2_1?: number | null;
+  level_2_2?: number | null;
+  level_2_5?: number | null;
+  created_at?: string;
+}
+
+export interface UserSelectedQuota {
+  user_id: string; // PK
+  product_code: string; // PK
+  product_name: string;
+  zindex: number;
+  created_at?: string;
+}
+
+export interface Profile {
+  id: string;
+  email?: string;
+  username?: string | null;
+  full_name?: string | null;
+  avatar_url?: string | null;
+  salary_level?: string | null;
+  role?: string | null;
+  is_active?: boolean | null;
+  created_at?: string;
+  updated_at?: string;
+}

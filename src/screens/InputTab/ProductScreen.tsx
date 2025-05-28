@@ -1,5 +1,5 @@
 // src/screens/InputTab/ProductScreen.tsx
-import React, { useState, useEffect, useCallback, useLayoutEffect, lazy } from 'react';
+import React, { useState, useEffect, useCallback, useLayoutEffect, lazy, Suspense } from 'react';
 import {
   View,
   Text,
@@ -7,486 +7,366 @@ import {
   FlatList,
   TouchableOpacity,
   ActivityIndicator,
-  ScrollView,
   Alert,
   Platform,
 } from 'react-native';
-import { Swiper, SwiperSlide } from 'swiper/react';
-import 'swiper/css';
-import type { StackNavigationProp } from '@react-navigation/stack';
-import { useNavigation, useFocusEffect } from '@react-navigation/native';
-import Ionicons from '@expo/vector-icons/Ionicons';
+import { Swiper, SwiperSlide } from 'swiper/react'; //
+import 'swiper/css'; //
+import type { StackNavigationProp } from '@react-navigation/stack'; //
+import { useNavigation, useFocusEffect } from '@react-navigation/native'; //
 
-import { InputStackNavigatorParamList } from '../../navigation/types';
-import { theme } from '../../theme';
-import { Quota, ProductionEntry, DailyProductionData } from '../../types/data';
+import { InputStackNavigatorParamList } from '../../navigation/types'; //
+import { theme } from '../../theme'; //
+import { ProductionEntry, DailyProductionData, UserSelectedQuota, Profile, QuotaSetting } from '../../types/data'; //
+import { supabase } from '../../services/supabase'; //
 import {
-  getQuotasFromStorage,
-  getProductionEntriesByDateRangeFromStorage,
-  deleteProductionEntryFromStorage,
-} from '../../services/storage';
+  getProductionEntriesByDateRange, //
+  getUserSelectedQuotas, //
+  getUserProfile, //
+  getQuotaSettingByProductCode, //
+  getQuotaValueBySalaryLevel, //
+} from '../../services/storage'; //
 import {
-  getToday,
-  getCurrentEstronWeekInfo,
-  EstronWeekPeriod,
-  formatDate,
-  formatToYYYYMMDD,
-  getDayOfWeekVietnamese,
-} from '../../utils/dateUtils';
+  getToday, //
+  getCurrentEstronWeekInfo, //
+  EstronWeekPeriod, //
+  formatDate, //
+  formatToYYYYMMDD, //
+  getDayOfWeekVietnamese, //
+} from '../../utils/dateUtils'; //
 
-import DailyProductionCard, { EntryInfoForDelete } from './DailyProductionCard';
-import Button from '../../components/common/Button';
-import ModalWrapper from '../../components/common/ModalWrapper';
+import WeeklyPage from './components/WeeklyPage'; //
+import Button from '../../components/common/Button'; //
+import ModalWrapper from '../../components/common/ModalWrapper'; //
 
-// Dynamic import cho PagerView
-const PagerView = Platform.OS !== 'web' ? lazy(() => import('react-native-pager-view')) : null;
+const PagerView = Platform.OS !== 'web' ? lazy(() => import('react-native-pager-view')) : null; //
+type ProductScreenNavigationProp = StackNavigationProp<InputStackNavigatorParamList, 'ProductList'>; //
 
-type ProductScreenNavigationProp = StackNavigationProp<InputStackNavigatorParamList, 'ProductList'>;
-
-interface ProcessedWeekData {
-  weekInfo: EstronWeekPeriod;
-  dailyData: DailyProductionData[];
-  totalWeeklyWork: number;
-}
-
-interface EntryToDeleteModalInfo extends EntryInfoForDelete {
-  formattedDate: string;
+export interface ProcessedWeekData { //
+  weekInfo: EstronWeekPeriod; //
+  dailyData: DailyProductionData[]; //
+  totalWeeklyWork: number; //
 }
 
 export default function ProductScreen() {
-  const navigation = useNavigation<ProductScreenNavigationProp>();
+  const navigation = useNavigation<ProductScreenNavigationProp>(); //
 
-  const [isLoading, setIsLoading] = useState(true);
-  const [quotas, setQuotas] = useState<Quota[]>([]);
-  const [estronWeekInfo, setEstronWeekInfo] = useState<ReturnType<typeof getCurrentEstronWeekInfo> | null>(null);
-  const [processedWeeksData, setProcessedWeeksData] = useState<ProcessedWeekData[]>([]);
-  const [isProductModalVisible, setIsProductModalVisible] = useState(false);
-  const [currentPage, setCurrentPage] = useState(0);
-  const [selectedDateForInput, setSelectedDateForInput] = useState<string>(formatToYYYYMMDD(getToday()));
-  const [isDeleteConfirmModalVisible, setIsDeleteConfirmModalVisible] = useState(false);
-  const [entryToDelete, setEntryToDelete] = useState<EntryToDeleteModalInfo | null>(null);
+  const [isLoading, setIsLoading] = useState(true); //
+  const [userSelectedQuotas, setUserSelectedQuotas] = useState<UserSelectedQuota[]>([]); //
+  const [userProfile, setUserProfile] = useState<Profile | null>(null); //
 
-  useLayoutEffect(() => {
-    if (estronWeekInfo && estronWeekInfo.estronMonth && estronWeekInfo.estronMonth.estronMonth) {
-      navigation.setOptions({
-        title: `Sản lượng tháng ${estronWeekInfo.estronMonth.estronMonth}`,
-      });
+  const [estronWeekInfo, setEstronWeekInfo] = useState<ReturnType<typeof getCurrentEstronWeekInfo> | null>(null); //
+  const [processedWeeksData, setProcessedWeeksData] = useState<ProcessedWeekData[]>([]); //
+  const [isProductModalVisible, setIsProductModalVisible] = useState(false); //
+  const [currentPage, setCurrentPage] = useState(0); //
+  const [selectedDateForInput, setSelectedDateForInput] = useState<string>(formatToYYYYMMDD(getToday())); //
+  const [userId, setUserId] = useState<string | null>(null); //
+
+  useEffect(() => {
+    const fetchUser = async () => {
+      const { data: { user } } = await supabase.auth.getUser(); //
+      if (user) {
+        setUserId(user.id); //
+      } else {
+        console.warn("ProductScreen: Không tìm thấy user."); //
+        setIsLoading(false); //
+      }
+    };
+    fetchUser();
+  }, []);
+
+  const loadInitialData = useCallback(async () => { //
+    if (!userId) { //
+      return;
+    }
+    setIsLoading(true); //
+    try {
+      const todayForFilter = getToday(); //
+      const currentEstronInfo = getCurrentEstronWeekInfo(todayForFilter); //
+      setEstronWeekInfo(currentEstronInfo); //
+
+      const productionEntriesFromSupabase = (currentEstronInfo.estronMonth.startDate && currentEstronInfo.estronMonth.endDate) //
+        ? await getProductionEntriesByDateRange( //
+            userId, //
+            formatToYYYYMMDD(currentEstronInfo.estronMonth.startDate), //
+            formatToYYYYMMDD(currentEstronInfo.estronMonth.endDate) //
+          )
+        : [];
+
+      const [profileData, selectedQuotasData] = await Promise.all([ //
+        getUserProfile(userId), //
+        getUserSelectedQuotas(userId), //
+      ]);
+
+      setUserProfile(profileData); //
+      setUserSelectedQuotas(selectedQuotasData); //
+
+      const allQuotaSettingsNeededCodes = selectedQuotasData.map(usq => usq.product_code); //
+      const quotaSettingsMap = new Map<string, QuotaSetting>(); //
+      if (allQuotaSettingsNeededCodes.length > 0) { //
+        const settingsPromises = allQuotaSettingsNeededCodes.map(pc => getQuotaSettingByProductCode(pc)); //
+        const settingsResults = await Promise.all(settingsPromises); //
+        settingsResults.forEach(qs => { //
+          if (qs) quotaSettingsMap.set(qs.product_code, qs); //
+        });
+      }
+
+      const weeksToProcess = currentEstronInfo.allWeeksInMonth; //
+      if (weeksToProcess && weeksToProcess.length > 0) { //
+        const weeksData: ProcessedWeekData[] = weeksToProcess.map(week => { //
+          let totalWeeklyWorkAcc = 0; //
+          const daysInWeekToDisplay = week.days.filter(dayDate => new Date(dayDate) <= todayForFilter); //
+
+          const dailyDataForWeek: DailyProductionData[] = daysInWeekToDisplay.map(dayDate => { //
+            const yyyymmdd = formatToYYYYMMDD(dayDate); //
+            const entriesForDay = productionEntriesFromSupabase.filter(entry => entry.date === yyyymmdd); //
+            let totalDailyWork = 0; //
+
+            const dailyEntries = entriesForDay.map(entry => { //
+              const quotaSetting = quotaSettingsMap.get(entry.product_code); //
+              let workAmount = 0; //
+              if (quotaSetting && profileData?.salary_level && entry.quantity != null) { //
+                  const dailyQuota = getQuotaValueBySalaryLevel(quotaSetting, profileData.salary_level); //
+                  if (dailyQuota > 0) { //
+                      workAmount = entry.quantity / dailyQuota; //
+                  }
+              }
+              totalDailyWork += workAmount; //
+              return { //
+                id: entry.id, //
+                stageCode: entry.product_code, //
+                quantity: entry.quantity || 0, //
+                workAmount: parseFloat(workAmount.toFixed(2)), //
+                po: entry.po, //
+                box: entry.box, //
+                batch: entry.batch, //
+              };
+            });
+            totalWeeklyWorkAcc += totalDailyWork; //
+
+            return { //
+              date: yyyymmdd, //
+              dayOfWeek: getDayOfWeekVietnamese(dayDate), //
+              formattedDate: formatDate(dayDate, 'dd/MM'), //
+              entries: dailyEntries, //
+              totalWorkForDay: parseFloat(totalDailyWork.toFixed(2)), //
+            };
+          });
+          return { //
+            weekInfo: week, //
+            dailyData: dailyDataForWeek, //
+            totalWeeklyWork: parseFloat(totalWeeklyWorkAcc.toFixed(2)), //
+          };
+        }).filter(weekData => weekData.dailyData.length > 0); //
+        setProcessedWeeksData(weeksData); //
+
+        if (weeksData.length > 0) { //
+            if (currentEstronInfo.currentWeek) { //
+                const todayWeekIndex = weeksData.findIndex( //
+                    w => w.weekInfo.name === currentEstronInfo.currentWeek!.name && //
+                         w.weekInfo.startDate.getTime() === currentEstronInfo.currentWeek!.startDate.getTime() //
+                );
+                setCurrentPage(todayWeekIndex !== -1 ? todayWeekIndex : weeksData.length - 1); //
+            } else {
+                setCurrentPage(weeksData.length - 1); //
+            }
+        } else {
+            setProcessedWeeksData([]); //
+            setCurrentPage(0); //
+        }
+      } else {
+        setProcessedWeeksData([]); //
+      }
+    } catch (error) {
+      console.error("ProductScreen: Error loading initial data:", error); //
+      Alert.alert("Lỗi", "Không thể tải dữ liệu màn hình sản phẩm."); //
+    } finally {
+      setIsLoading(false); //
+    }
+  }, [userId]);
+
+  useFocusEffect( //
+    useCallback(() => { //
+      if (userId) { //
+        loadInitialData(); //
+      }
+    }, [userId, loadInitialData])
+  );
+
+  useLayoutEffect(() => { //
+    if (estronWeekInfo && estronWeekInfo.estronMonth && estronWeekInfo.estronMonth.estronMonth) { //
+      navigation.setOptions({ title: `Sản lượng tháng ${estronWeekInfo.estronMonth.estronMonth}` }); //
     } else {
-      navigation.setOptions({
-        title: 'Sản Lượng Estron',
-      });
+      navigation.setOptions({ title: 'Sản Lượng Estron' }); //
     }
   }, [navigation, estronWeekInfo]);
 
-  const loadInitialData = useCallback(async () => {
-    setIsLoading(true);
-    try {
-      const todayForFilter = getToday();
-      const currentEstronInfo = getCurrentEstronWeekInfo(todayForFilter);
-      setEstronWeekInfo(currentEstronInfo);
-
-      const [storedQuotas, allProductionEntries] = await Promise.all([
-        getQuotasFromStorage(),
-        currentEstronInfo.estronMonth.startDate && currentEstronInfo.estronMonth.endDate
-          ? getProductionEntriesByDateRangeFromStorage(
-              formatToYYYYMMDD(currentEstronInfo.estronMonth.startDate),
-              formatToYYYYMMDD(currentEstronInfo.estronMonth.endDate)
-            )
-          : Promise.resolve([]),
-      ]);
-      setQuotas(storedQuotas);
-
-      if (currentEstronInfo.visibleWeeks && currentEstronInfo.visibleWeeks.length > 0) {
-        const weeksData: ProcessedWeekData[] = currentEstronInfo.visibleWeeks.map(week => {
-          let totalWeeklyWorkAcc = 0;
-
-          const daysInWeekToShow = week.days.filter(dayInWeek => {
-            const dayStart = new Date(dayInWeek);
-            dayStart.setHours(0, 0, 0, 0);
-            const todayStart = new Date(todayForFilter);
-            todayStart.setHours(0, 0, 0, 0);
-            return dayStart <= todayStart;
-          });
-
-          const dailyDataForWeek: DailyProductionData[] = daysInWeekToShow.map(dayDate => {
-            const yyyymmdd = formatToYYYYMMDD(dayDate);
-            const entriesForDay = allProductionEntries.filter(entry => entry.date === yyyymmdd);
-            let totalDailyWork = 0;
-
-            const dailyEntries = entriesForDay.map(entry => {
-              const quota = storedQuotas.find(q => q.stageCode === entry.stageCode);
-              const workAmount = quota && quota.dailyQuota > 0 ? entry.quantity / quota.dailyQuota : 0;
-              totalDailyWork += workAmount;
-              return {
-                id: entry.id,
-                stageCode: entry.stageCode,
-                quantity: entry.quantity,
-                workAmount: parseFloat(workAmount.toFixed(2)),
-              };
-            });
-            totalWeeklyWorkAcc += totalDailyWork;
-
-            return {
-              date: yyyymmdd,
-              dayOfWeek: getDayOfWeekVietnamese(dayDate),
-              formattedDate: formatDate(dayDate, 'dd/MM'),
-              entries: dailyEntries,
-              totalWorkForDay: parseFloat(totalDailyWork.toFixed(2)),
-            };
-          });
-          return {
-            weekInfo: week,
-            dailyData: dailyDataForWeek,
-            totalWeeklyWork: parseFloat(totalWeeklyWorkAcc.toFixed(2)),
-          };
-        });
-        setProcessedWeeksData(weeksData);
-
-        const todayWeekIndex = currentEstronInfo.visibleWeeks.findIndex(
-          week => todayForFilter >= week.startDate && todayForFilter <= week.endDate
-        );
-        if (todayWeekIndex !== -1) {
-          setCurrentPage(todayWeekIndex);
-        } else if (currentEstronInfo.visibleWeeks.length > 0) {
-          setCurrentPage(currentEstronInfo.visibleWeeks.length - 1);
-        }
-      } else {
-        setProcessedWeeksData([]);
-      }
-    } catch (error) {
-      console.error("Error loading product screen data:", error);
-      Alert.alert("Lỗi", "Không thể tải dữ liệu màn hình sản phẩm.");
-    } finally {
-      setIsLoading(false);
-    }
-  }, []);
-
-  useFocusEffect(
-    useCallback(() => {
-      loadInitialData();
-    }, [loadInitialData])
-  );
-
-  const handleShowDeleteConfirmModal = (entryInfo: EntryInfoForDelete, entryFormattedDate: string) => {
-    setEntryToDelete({ ...entryInfo, formattedDate: entryFormattedDate });
-    setIsDeleteConfirmModalVisible(true);
-  };
-
-  const handleConfirmDelete = async () => {
-    if (!entryToDelete) return;
-    try {
-      const success = await deleteProductionEntryFromStorage(entryToDelete.id);
-      if (success) {
-        Alert.alert('Thành công', 'Đã xóa mục sản lượng.');
-        await loadInitialData();
-      } else {
-        Alert.alert('Lỗi', 'Không thể xóa mục sản lượng. Vui lòng thử lại.');
-      }
-    } catch (error) {
-      console.error("Error deleting production entry:", error);
-      Alert.alert('Lỗi nghiêm trọng', 'Đã có lỗi xảy ra khi xóa.');
-    } finally {
-      setIsDeleteConfirmModalVisible(false);
-      setEntryToDelete(null);
-    }
-  };
-
-  const handleCancelDelete = () => {
-    setIsDeleteConfirmModalVisible(false);
-    setEntryToDelete(null);
-  };
-
-  const handleSelectProduct = (quota: Quota) => {
-    setIsProductModalVisible(false);
-    navigation.navigate('InputDetails', {
-      stageCode: quota.stageCode,
-      quotaValue: quota.dailyQuota,
-      date: selectedDateForInput,
-    });
-  };
-
-  const openProductModal = (dateForInput: string) => {
-    if (quotas.length === 0) {
-      Alert.alert("Chưa có định mức", "Vui lòng vào Cài đặt để thêm định mức sản phẩm trước.");
+  const handleSelectProduct = async (selectedUserQuota: UserSelectedQuota) => { //
+    setIsProductModalVisible(false); //
+    if (!userProfile || !userProfile.salary_level) { //
+      Alert.alert("Lỗi", "Không tìm thấy thông tin bậc lương người dùng."); //
       return;
     }
-    setSelectedDateForInput(dateForInput);
-    setIsProductModalVisible(true);
+    if (!selectedUserQuota.product_code) { //
+        Alert.alert("Lỗi", "Mã sản phẩm không hợp lệ."); //
+        return;
+    }
+    setIsLoading(true); //
+    try {
+      const quotaSettingDetails = await getQuotaSettingByProductCode(selectedUserQuota.product_code); //
+      if (!quotaSettingDetails) { //
+        Alert.alert("Lỗi", `Không tìm thấy chi tiết định mức cho sản phẩm '${selectedUserQuota.product_code}'.`); //
+        setIsLoading(false); //
+        return;
+      }
+      const actualQuotaValue = getQuotaValueBySalaryLevel(quotaSettingDetails, userProfile.salary_level); //
+      navigation.navigate('InputDetails', { //
+        stageCode: selectedUserQuota.product_code, //
+        quotaValue: actualQuotaValue, //
+        date: selectedDateForInput, //
+      });
+    } catch (error) {
+        console.error("ProductScreen: Error in handleSelectProduct:", error); //
+        Alert.alert("Lỗi", "Có lỗi xảy ra khi xử lý sản phẩm đã chọn."); //
+    } finally {
+        setIsLoading(false); //
+    }
   };
 
-  const renderWeekPage = (weekData: ProcessedWeekData) => {
-    const weekHasData = quotas.length > 0;
-    return (
-      <View key={weekData.weekInfo.name} style={styles.pageStyle}>
-        <View style={styles.weekHeader}>
-          <View>
-            <Text style={styles.weekName}>{weekData.weekInfo.name}</Text>
-            <Text style={styles.weekDateRange}>
-              ({formatDate(weekData.weekInfo.startDate, 'dd/MM')} - {formatDate(weekData.weekInfo.endDate, 'dd/MM')})
-            </Text>
-          </View>
-          {weekHasData && (
-            <Text style={styles.totalWeeklyWorkText}>
-              Tổng công tuần1: {weekData.totalWeeklyWork != null ? weekData.totalWeeklyWork.toLocaleString() : '0'}
-            </Text>
-          )}
-        </View>
-        <ScrollView showsVerticalScrollIndicator={false} style={{ flex: 1 }} contentContainerStyle={{ paddingHorizontal: theme.spacing.sm }}>
-          {weekData.dailyData.map(day => (
-            <DailyProductionCard
-              key={day.date}
-              dailyInfo={day}
-              weekHasData={weekHasData}
-              onAddProduction={openProductModal}
-              onAttemptDeleteEntry={(entryInfo) => handleShowDeleteConfirmModal(entryInfo, day.formattedDate)}
-            />
-          ))}
-          <View style={{ height: 80 }} />
-        </ScrollView>
-      </View>
-    );
+  const openProductModal = (dateForInput: string) => { //
+    if (userSelectedQuotas.length === 0) { //
+      Alert.alert("Chưa có định mức", "Bạn chưa chọn sản phẩm nào trong phần Cài Đặt Định Mức."); //
+      return;
+    }
+    setSelectedDateForInput(dateForInput); //
+    setIsProductModalVisible(true); //
   };
 
-  if (isLoading) {
-    return (
-      <View style={styles.centered}>
-        <ActivityIndicator size="large" color={theme.colors.primary} />
-      </View>
-    );
+
+  if (isLoading && !userId) { //
+    return ( <View style={styles.centered}><ActivityIndicator size="large" color={theme.colors.primary} /><Text style={{color: theme.colors.textSecondary, marginTop: theme.spacing['level-2']}}>Đang tải thông tin người dùng...</Text></View> ); //
+  }
+  if (isLoading && userId && processedWeeksData.length === 0 ) { //
+    return ( <View style={styles.centered}><ActivityIndicator size="large" color={theme.colors.primary} /><Text style={{color: theme.colors.textSecondary, marginTop: theme.spacing['level-2']}}>Đang tải dữ liệu...</Text></View> ); //
+  }
+  if (!userId && !isLoading){ //
+     return ( <View style={styles.centered}><Text style={styles.emptyText}>Không thể tải dữ liệu do chưa xác thực người dùng.</Text><Button title="Thử Lại" onPress={() => { const fetchUser = async () => { const { data: { user } } = await supabase.auth.getUser(); if (user) setUserId(user.id); else Alert.alert("Lỗi", "Vẫn không thể xác thực người dùng."); }; fetchUser(); }} style={{ marginTop: theme.spacing['level-4'] }} /></View> ); //
+  }
+  if (userId && !isLoading && (!estronWeekInfo || processedWeeksData.length === 0)) { //
+    return ( <View style={styles.centered}><Text style={styles.emptyText}>Không có dữ liệu tuần để hiển thị.</Text><Button title="Thử Tải Lại" onPress={loadInitialData} style={{ marginTop: theme.spacing['level-4'] }} /></View> ); //
   }
 
-  if (!estronWeekInfo || processedWeeksData.length === 0) {
-    return (
-      <View style={styles.centered}>
-        <Text style={styles.emptyText}>Không có dữ liệu tuần để hiển thị.</Text>
-        <Button title="Thử Tải Lại" onPress={loadInitialData} style={{ marginTop: theme.spacing.md }} />
-      </View>
-    );
-  }
+  const pagerKey = `${userId}-${processedWeeksData.length}-${currentPage}-${Platform.OS}`; //
+
 
   return (
     <View style={styles.container}>
-      {Platform.OS === 'web' ? (
-        <Swiper
-          style={styles.pagerView}
-          initialSlide={currentPage}
-          onSlideChange={(swiper) => setCurrentPage(swiper.activeIndex)}
-        >
-          {processedWeeksData.map(weekData => (
-            <SwiperSlide key={weekData.weekInfo.name}>
-              {renderWeekPage(weekData)}
-            </SwiperSlide>
-          ))}
-        </Swiper>
-      ) : (
-        PagerView && (
-          <PagerView
-            style={styles.pagerView}
-            initialPage={currentPage}
-            key={processedWeeksData.length + "-" + currentPage}
-            onPageSelected={e => setCurrentPage(e.nativeEvent.position)}
-          >
-            {processedWeeksData.map(weekData => renderWeekPage(weekData))}
-          </PagerView>
+      {userId && processedWeeksData.length > 0 && ( //
+        Platform.OS === 'web' ? ( //
+          <Swiper style={styles.pagerView} initialSlide={currentPage} onSlideChange={(swiper) => setCurrentPage(swiper.activeIndex)} key={pagerKey} >
+            {processedWeeksData.map(weekData => ( //
+              <SwiperSlide key={weekData.weekInfo.name + weekData.weekInfo.startDate.toISOString()}>
+                <WeeklyPage userId={userId} weekData={weekData} quotasExist={userSelectedQuotas.length > 0} onAddProduction={openProductModal} />
+              </SwiperSlide>
+            ))}
+          </Swiper>
+        ) : (
+          PagerView && ( //
+            <Suspense fallback={<View style={styles.centered}><ActivityIndicator size="large" color={theme.colors.primary} /></View>}>
+              <PagerView style={styles.pagerView} initialPage={currentPage} key={pagerKey} onPageSelected={e => setCurrentPage(e.nativeEvent.position)} >
+                {processedWeeksData.map(weekData => ( //
+                    <View key={weekData.weekInfo.name + weekData.weekInfo.startDate.toISOString()} style={styles.fullFlex}>
+                        <WeeklyPage userId={userId} weekData={weekData} quotasExist={userSelectedQuotas.length > 0} onAddProduction={openProductModal} />
+                    </View>
+                ))}
+              </PagerView>
+            </Suspense>
+          )
         )
       )}
-
-      <ModalWrapper
-        visible={isProductModalVisible}
-        onClose={() => setIsProductModalVisible(false)}
-      >
+      <ModalWrapper visible={isProductModalVisible} onClose={() => setIsProductModalVisible(false)} >
         <View style={styles.customModalHeader}>
-          <Text style={styles.customModalTitle}>Chọn sản phẩm</Text>
-          <Text style={styles.customModalSubtitle}>
-            {selectedDateForInput ? formatDate(selectedDateForInput, 'PPPP') : ''}
-          </Text>
+            <Text style={styles.customModalTitle}>Chọn sản phẩm</Text>
+            <Text style={styles.customModalSubtitle}>Ngày nhập: {selectedDateForInput ? formatDate(selectedDateForInput, 'dd/MM/yyyy') : ''}</Text>
         </View>
-        {quotas.length > 0 ? (
-          <FlatList
-            data={quotas}
-            keyExtractor={(item) => item.id}
-            numColumns={2}
-            renderItem={({ item }) => (
-              <TouchableOpacity
-                style={styles.productModalItemGrid}
-                onPress={() => handleSelectProduct(item)}
-              >
-                <Text style={styles.productStageCodeGrid}>{item.stageCode}</Text>
-                <Text style={styles.productDailyQuotaGrid}>Định mức: {item.dailyQuota.toLocaleString()}</Text>
-              </TouchableOpacity>
-            )}
-            style={styles.productListGrid}
-          />
-        ) : (
-          <Text style={styles.emptyTextModal}>Không có định mức nào được cài đặt.</Text>
-        )}
+        {userSelectedQuotas.length > 0 ? ( 
+            <FlatList 
+                data={userSelectedQuotas} 
+                keyExtractor={(item) => item.product_code} 
+                numColumns={2} 
+                renderItem={({ item }) => ( 
+                    <TouchableOpacity style={styles.productModalItemGrid} onPress={() => handleSelectProduct(item)} > 
+                        <Text style={styles.productStageCodeGrid}>{item.product_code}</Text>
+                        <Text style={styles.productDailyQuotaGrid}>{item.product_name || '(Chưa có tên SP)'}</Text>
+                    </TouchableOpacity> 
+                )} 
+                style={styles.productListGrid} 
+            /> 
+        ) : ( <Text style={styles.emptyTextModal}>Không có sản phẩm nào trong cài đặt.</Text> )}
       </ModalWrapper>
-
-      {entryToDelete && (
-        <ModalWrapper
-          visible={isDeleteConfirmModalVisible}
-          onClose={handleCancelDelete}
-        >
-          <View style={styles.confirmDeleteModalContainer}>
-            <Text style={styles.confirmDeleteTitle}>Xác nhận xóa</Text>
-            <Text style={styles.confirmDeleteMessage}>
-              Bạn có chắc chắn muốn xóa mục sản lượng này?
-            </Text>
-            <View style={styles.confirmDeleteDetails}>
-              <Text style={styles.detailText}>{`Công đoạn: ${entryToDelete.stageCode}`}</Text>
-              <Text style={styles.detailText}>{`Số lượng: ${entryToDelete.quantity.toLocaleString()}`}</Text>
-              <Text style={styles.detailText}>{`Ngày: ${entryToDelete.formattedDate}`}</Text>
-            </View>
-            <View style={styles.confirmDeleteActions}>
-              <Button title="Hủy" onPress={handleCancelDelete} type="secondary" style={styles.modalButton} />
-              <Button title="Xóa" onPress={handleConfirmDelete} type="danger" style={styles.modalButton} />
-            </View>
-          </View>
-        </ModalWrapper>
-      )}
     </View>
   );
 }
 
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: theme.colors.background,
-  },
-  pagerView: {
-    flex: 1,
-    width: '100%',
-    overflow:'scroll'
-  },
-  pageStyle: {
-    flex: 1,
-    paddingHorizontal: theme.spacing.sm,
-  },
-  centered: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    padding: theme.spacing.lg,
-  },
-  emptyText: {
-    fontSize: theme.typography.body.fontSize,
-    color: theme.colors.textSecondary,
-    textAlign: 'center',
-    marginBottom: theme.spacing.sm,
-  },
-  weekHeader: {
-    paddingVertical: theme.spacing.md,
-    paddingHorizontal: theme.spacing.sm,
-    marginHorizontal: -theme.spacing.sm,
-    borderBottomWidth: 1,
-    borderBottomColor: theme.colors.borderColor,
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    backgroundColor: theme.colors.lightGrey,
-  },
-  weekName: {
-    fontSize: theme.typography.h3.fontSize,
-    fontWeight: theme.typography.h3.fontWeight,
-    color: theme.colors.primary,
-  },
-  weekDateRange: {
-    fontSize: theme.typography.caption.fontSize,
-    color: theme.colors.textSecondary,
-  },
-  totalWeeklyWorkText: {
-    fontSize: theme.typography.body.fontSize,
-    fontWeight: 'bold',
-    color: theme.colors.success,
-  },
-  customModalHeader: {
-    alignItems: 'center',
-    marginBottom: theme.spacing.lg,
-    paddingBottom: theme.spacing.md,
-    borderBottomWidth: 1,
-    borderBottomColor: theme.colors.borderColor,
-  },
-  customModalTitle: {
-    fontSize: theme.typography.h2.fontSize,
-    fontWeight: theme.typography.h2.fontWeight,
-    color: theme.colors.text,
-    marginBottom: theme.spacing.xs,
-  },
-  customModalSubtitle: {
-    fontSize: theme.typography.body.fontSize,
-    color: theme.colors.textSecondary,
-  },
-  productListGrid: {
-    maxHeight: 400,
-  },
-  productModalItemGrid: {
-    flex: 1,
-    flexDirection: 'column',
-    alignItems: 'center',
-    justifyContent: 'center',
-    margin: theme.spacing.sm,
-    paddingVertical: theme.spacing.lg,
-    paddingHorizontal: theme.spacing.sm,
-    backgroundColor: theme.colors.white,
-    borderRadius: theme.borderRadius.lg,
-    borderWidth: 1,
-    borderColor: theme.colors.primary,
-    minHeight: 100,
-  },
-  productStageCodeGrid: {
-    fontSize: theme.typography.h4.fontSize,
-    fontWeight: theme.typography.h4.fontWeight,
-    color: theme.colors.text,
-    textAlign: 'center',
-    marginBottom: theme.spacing.sm,
-  },
-  productDailyQuotaGrid: {
-    fontSize: theme.typography.bodySmall.fontSize,
-    color: theme.colors.textSecondary,
-    textAlign: 'center',
-  },
-  emptyTextModal: {
-    fontSize: theme.typography.body.fontSize,
-    color: theme.colors.textSecondary,
-    textAlign: 'center',
-    paddingVertical: theme.spacing.lg,
-  },
-  confirmDeleteModalContainer: {
-    alignItems: 'center',
-    padding: theme.spacing.md,
-  },
-  confirmDeleteTitle: {
-    fontSize: theme.typography.h3.fontSize,
-    fontWeight: theme.typography.h3.fontWeight,
-    color: theme.colors.text,
-    marginBottom: theme.spacing.md,
-  },
-  confirmDeleteMessage: {
-    fontSize: theme.typography.body.fontSize,
-    color: theme.colors.textSecondary,
-    textAlign: 'center',
-    marginBottom: theme.spacing.sm,
-  },
-  confirmDeleteDetails: {
-    marginVertical: theme.spacing.md,
-    padding: theme.spacing.md,
-    backgroundColor: theme.colors.lightGrey,
-    borderRadius: theme.borderRadius.md,
-    alignSelf: 'stretch',
-  },
-  detailText: {
-    fontSize: theme.typography.bodySmall.fontSize,
-    color: theme.colors.text,
-    marginBottom: theme.spacing.xs,
-  },
-  confirmDeleteActions: {
-    flexDirection: 'row',
-    justifyContent: 'space-around',
-    marginTop: theme.spacing.lg,
-    width: '100%',
-  },
-  modalButton: {
-    flex: 1,
-    marginHorizontal: theme.spacing.sm,
-  },
+const styles = StyleSheet.create({ 
+  container: { flex: 1, backgroundColor: theme.colors.background2 }, 
+  pagerView: { flex: 1, width: '100%' }, 
+  fullFlex: { flex:1 }, 
+  centered: { flex: 1, justifyContent: 'center', alignItems: 'center', padding: theme.spacing['level-6'] }, // lg -> level-6
+  emptyText: { 
+    fontSize: theme.typography['level-4'].fontSize, // body.fontSize -> level-4
+    color: theme.colors.textSecondary, 
+    textAlign: 'center', 
+    marginBottom: theme.spacing['level-2'], // sm -> level-2
+  }, 
+  customModalHeader: { 
+    alignItems: 'center', 
+    marginBottom: theme.spacing['level-6'], // lg -> level-6
+    paddingBottom: theme.spacing['level-4'], // md -> level-4
+    borderBottomWidth: 1, 
+    borderBottomColor: theme.colors.borderColor, 
+  }, 
+  customModalTitle: { 
+    fontSize: theme.typography['level-7'].fontSize, // h2.fontSize (24) -> level-7 (24)
+    fontWeight: theme.typography['level-7-bold'].fontWeight, // h2.fontWeight -> level-7-bold
+    color: theme.colors.text, 
+    marginBottom: theme.spacing['level-1'], // xs -> level-1
+  }, 
+  customModalSubtitle: { 
+    fontSize: theme.typography['level-4'].fontSize, // body.fontSize -> level-4
+    color: theme.colors.textSecondary, 
+  }, 
+  productListGrid: { maxHeight: 400 }, 
+  productModalItemGrid: { 
+    flex: 1, 
+    flexDirection: 'column', 
+    alignItems: 'center', 
+    justifyContent: 'center', 
+    margin: theme.spacing['level-2'], // sm -> level-2
+    paddingVertical: theme.spacing['level-6'], // lg -> level-6
+    paddingHorizontal: theme.spacing['level-2'], // sm -> level-2
+    backgroundColor: theme.colors.cardBackground, // white -> cardBackground
+    borderRadius: theme.borderRadius['level-7'], // lg -> level-7
+    borderWidth: 1, 
+    borderColor: theme.colors.primary, 
+    minHeight: 100,  
+  }, 
+  productStageCodeGrid: { 
+    fontSize: theme.typography['level-5'].fontSize, // h4.fontSize -> level-5
+    fontWeight: theme.typography['level-5-bold'].fontWeight, // h4.fontWeight -> level-5-bold
+    color: theme.colors.text, 
+    textAlign: 'center', 
+    marginBottom: theme.spacing['level-2'], // sm -> level-2
+  }, 
+  productDailyQuotaGrid: { 
+    fontSize: theme.typography['level-3'].fontSize, // bodySmall.fontSize -> level-3
+    color: theme.colors.textSecondary, 
+    textAlign: 'center', 
+  }, 
+  emptyTextModal: { 
+    fontSize: theme.typography['level-4'].fontSize, // body.fontSize -> level-4
+    color: theme.colors.textSecondary, 
+    textAlign: 'center', 
+    paddingVertical: theme.spacing['level-6'], // lg -> level-6
+  }, 
 });

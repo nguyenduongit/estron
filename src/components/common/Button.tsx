@@ -1,26 +1,30 @@
 // components/common/Button.tsx
 import React from "react";
-import { TouchableOpacity, Text, StyleSheet } from "react-native";
-import { theme } from "../../theme"; // Giả sử theme được export từ @/theme
+import { TouchableOpacity, Text, StyleSheet, ViewStyle, TextStyle } from "react-native";
+import { theme } from "../../theme";
 
 // Props cho Button
 interface ButtonProps {
   title: string;
   onPress: () => void;
   type?: "primary" | "secondary" | "danger";
-  style?: object;
-  textStyle?: object;
+  style?: ViewStyle | ViewStyle[];
+  textStyle?: TextStyle | TextStyle[];
   disabled?: boolean;
 }
 
 const Button: React.FC<ButtonProps> = ({ title, onPress, type = "primary", style, textStyle, disabled }) => {
   const buttonStyles = [
     styles.button,
-    styles[type],
+    styles[type], // type sẽ là 'primary', 'secondary', hoặc 'danger'
     disabled && styles.disabled,
-    style,
+    style, // Cho phép ghi đè style từ props
   ];
-  const textStyles = [styles.text, styles[`${type}Text`], textStyle];
+  const textStyles = [
+    styles.text,
+    styles[`${type}Text`], // Sẽ là 'primaryText', 'secondaryText', hoặc 'dangerText'
+    textStyle, // Cho phép ghi đè textStyle từ props
+  ];
 
   return (
     <TouchableOpacity onPress={onPress} style={buttonStyles} disabled={disabled}>
@@ -31,37 +35,37 @@ const Button: React.FC<ButtonProps> = ({ title, onPress, type = "primary", style
 
 const styles = StyleSheet.create({
   button: {
-    paddingVertical: theme.spacing.sm,
-    paddingHorizontal: theme.spacing.md,
-    borderRadius: theme.borderRadius.md,
+    paddingVertical: theme.spacing['level-2'], // sm -> level-2
+    paddingHorizontal: theme.spacing['level-4'], // md -> level-4
+    borderRadius: theme.borderRadius['level-4'], // md -> level-4
     alignItems: "center",
     justifyContent: "center",
-    minHeight: 44, // Chiều cao tối thiểu cho dễ chạm
+    minHeight: 44,
   },
   text: {
-    fontSize: theme.typography.button.fontSize,
-    fontWeight: theme.typography.button.fontWeight,
+    fontSize: theme.typography['level-4'].fontSize, // button.fontSize (16) -> level-4 (16)
+    fontWeight: theme.typography['level-4-bold'].fontWeight, // button.fontWeight ('500') -> level-4-bold
   },
   primary: {
-    backgroundColor: theme.colors.primary,
+    backgroundColor: theme.colors.primary, // Giữ nguyên
   },
   primaryText: {
-    color: theme.colors.white,
+    color: theme.colors.textOnPrimary, // white -> textOnPrimary
   },
   secondary: {
-    backgroundColor: theme.colors.secondary,
+    backgroundColor: theme.colors.darkGrey, // secondary -> darkGrey (màu phù hợp cho dark theme)
   },
   secondaryText: {
-    color: theme.colors.white,
+    color: theme.colors.text, // white -> text (màu text sáng trên nền tối)
   },
   danger: {
-    backgroundColor: theme.colors.danger,
+    backgroundColor: theme.colors.danger, // Giữ nguyên
   },
   dangerText: {
-    color: theme.colors.white,
+    color: theme.colors.textOnPrimary, // white -> textOnPrimary (giả định text trắng trên nền danger)
   },
   disabled: {
-    backgroundColor: theme.colors.grey,
+    backgroundColor: theme.colors.grey, // Giữ nguyên
     opacity: 0.7,
   },
 });

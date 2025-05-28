@@ -1,6 +1,12 @@
     // navigation/types.ts
     import { Quota } from "../types/data"; // Đảm bảo đường dẫn đúng
 
+    export type AuthStackParamList = {
+      SignIn: undefined; // Màn hình SignIn không nhận tham số
+      SignUp: undefined; // Màn hình SignUp không nhận tham số
+      // Thêm các màn hình khác của Auth stack nếu có
+    };
+
     // Định nghĩa các params cho từng màn hình trong Stack Nhập liệu
     export type InputStackNavigatorParamList = {
       ProductList: undefined; // Màn hình Product (đổi tên từ ProductScreen để rõ ràng hơn)

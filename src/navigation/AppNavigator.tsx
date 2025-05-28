@@ -1,38 +1,28 @@
-// navigation/AppNavigator.tsx
+// src/navigation/AppNavigator.tsx
 import React from 'react';
-import { NavigationContainer } from '@react-navigation/native';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { createStackNavigator, StackNavigationProp } from '@react-navigation/stack';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { TouchableOpacity, Platform } from 'react-native';
 
-// Import các màn hình
 import ProductScreen from '../screens/InputTab/ProductScreen';
 import InputScreen from '../screens/InputTab/InputScreen';
 import SettingScreen from '../screens/InputTab/SettingScreen';
-import StatisticsScreen from '../screens/StatisticsTab/StatisticsScreen'; // Vẫn import StatisticsScreen
+import StatisticsScreen from '../screens/StatisticsTab/StatisticsScreen';
 
-// Import types
 import { InputStackNavigatorParamList, BottomTabNavigatorParamList } from './types';
-// Nếu bạn muốn chặt chẽ hơn, có thể tạo StatisticsStackNavigatorParamList
-// export type StatisticsStackNavigatorParamList = {
-//   StatisticsDetail: undefined; // Hoặc tên màn hình bạn muốn cho StatisticsScreen trong stack này
-// };
-
 import { theme } from '../theme';
 
-const InputTabStack = createStackNavigator<InputStackNavigatorParamList>(); // Đổi tên biến để rõ ràng hơn
-const StatisticsTabStack = createStackNavigator(); // Stack mới cho tab Thống kê, có thể thêm ParamList nếu cần
+const InputTabStack = createStackNavigator<InputStackNavigatorParamList>();
+const StatisticsTabStack = createStackNavigator(); // Không dùng generic type nếu không có param list cụ thể cho stack này
 const Tab = createBottomTabNavigator<BottomTabNavigatorParamList>();
 
-// --- Header Style chung ---
 const commonStackScreenOptions = {
-  headerStyle: { backgroundColor: theme.colors.primary },
-  headerTintColor: theme.colors.white,
-  headerTitleStyle: { fontWeight: 'bold' as 'bold' },
+  headerStyle: { backgroundColor: theme.colors.primary }, // Giữ nguyên
+  headerTintColor: theme.colors.textOnPrimary, // white -> textOnPrimary
+  headerTitleStyle: { fontWeight: 'bold' as 'bold' }, // Giữ nguyên
 };
 
-// Stack Navigator cho Tab Nhập liệu
 function InputStack() {
   return (
     <InputTabStack.Navigator
@@ -43,16 +33,16 @@ function InputStack() {
         name="ProductList"
         component={ProductScreen}
         options={({ navigation }: { navigation: StackNavigationProp<InputStackNavigatorParamList, 'ProductList'> }) => ({
-          title: 'Sản Lượng Estron',
+          title: 'Sản Lượng Estron', // Có thể thay đổi dựa trên logic của ProductScreen
           headerRight: () => (
             <TouchableOpacity
               onPress={() => navigation.navigate('Settings')}
               style={{
-                marginRight: Platform.OS === 'ios' ? theme.spacing.sm : theme.spacing.md,
-                padding: theme.spacing.xs,
+                marginRight: Platform.OS === 'ios' ? theme.spacing['level-2'] : theme.spacing['level-4'], // sm -> level-2, md -> level-4
+                padding: theme.spacing['level-1'], // xs -> level-1
               }}
             >
-              <Ionicons name="settings-outline" size={24} color={theme.colors.white} />
+              <Ionicons name="settings-outline" size={24} color={theme.colors.textOnPrimary} /> 
             </TouchableOpacity>
           ),
         })}
@@ -60,6 +50,7 @@ function InputStack() {
       <InputTabStack.Screen
         name="InputDetails"
         component={InputScreen}
+        // options={{ title: 'Thêm Sản Lượng' }} // Title có thể được set trong InputScreen
       />
       <InputTabStack.Screen
         name="Settings"
@@ -70,60 +61,55 @@ function InputStack() {
   );
 }
 
-// --- Stack Navigator cho Tab Thống kê ---
-// navigation.setOptions sẽ được gọi trong StatisticsScreen để set headerLeft
 function StatisticsStack() {
   return (
     <StatisticsTabStack.Navigator
       screenOptions={commonStackScreenOptions}
     >
       <StatisticsTabStack.Screen
-        name="StatisticsRoot"
+        name="StatisticsRoot" // Đổi tên để tránh trùng với Tab name nếu có
         component={StatisticsScreen}
-        options={{ title: 'Thống Kê Chung' }} // Title này sẽ bị override bởi StatisticsScreen
+        options={{ title: 'Thống Kê Chung' }} // Title có thể được set trong StatisticsScreen
       />
-      {/* Nếu sau này tab Thống kê có thêm màn hình con, bạn sẽ thêm vào đây */}
     </StatisticsTabStack.Navigator>
   );
 }
 
-
-// Bottom Tab Navigator chính
 export default function AppNavigator() {
   return (
-    <NavigationContainer>
-      <Tab.Navigator
-        screenOptions={({ route }) => ({
-          tabBarIcon: ({ focused, color, size }) => {
-            let iconName: React.ComponentProps<typeof Ionicons>['name'] = 'alert-circle-outline';
+    <Tab.Navigator
+      screenOptions={({ route }) => ({
+        tabBarIcon: ({ focused, color, size }) => {
+          let iconName: React.ComponentProps<typeof Ionicons>['name'] = 'alert-circle-outline'; // Default icon
 
-            if (route.name === 'InputTab') {
-              iconName = focused ? 'create' : 'create-outline';
-            } else if (route.name === 'StatisticsTab') {
-              iconName = focused ? 'stats-chart' : 'stats-chart-outline';
-            }
-            return <Ionicons name={iconName} size={size} color={color} />;
-          },
-          tabBarActiveTintColor: theme.colors.primary,
-          tabBarInactiveTintColor: theme.colors.secondary,
-          headerShown: false, // QUAN TRỌNG: Stack con sẽ quản lý header của riêng nó
-          tabBarStyle: {
-            backgroundColor: theme.colors.white,
-            borderTopColor: theme.colors.borderColor,
+          if (route.name === 'InputTab') {
+            iconName = focused ? 'create' : 'create-outline';
+          } else if (route.name === 'StatisticsTab') {
+            iconName = focused ? 'stats-chart' : 'stats-chart-outline';
           }
-        })}
-      >
-        <Tab.Screen
-          name="InputTab"
-          component={InputStack}
-          options={{ title: 'Nhập liệu' }}
-        />
-        <Tab.Screen
-          name="StatisticsTab"
-          component={StatisticsStack}
-          options={{ title: 'Thống kê' }}
-        />
-      </Tab.Navigator>
-    </NavigationContainer>
+          return <Ionicons name={iconName} size={size} color={color} />;
+        },
+        tabBarActiveTintColor: theme.colors.primary, // Giữ nguyên
+        tabBarInactiveTintColor: theme.colors.textSecondary, // secondary -> textSecondary
+        headerShown: false, // Quan trọng: các stack tự quản lý header của chúng
+        tabBarStyle: {
+          backgroundColor: theme.colors.background1, // white -> background1
+          borderTopColor: theme.colors.borderColor, // Giữ nguyên
+          // Cân nhắc thêm borderTopWidth nếu cần thiết
+          // borderTopWidth: 1, 
+        }
+      })}
+    >
+      <Tab.Screen
+        name="InputTab"
+        component={InputStack}
+        options={{ title: 'Nhập liệu' }}
+      />
+      <Tab.Screen
+        name="StatisticsTab"
+        component={StatisticsStack}
+        options={{ title: 'Thống kê' }}
+      />
+    </Tab.Navigator>
   );
 }

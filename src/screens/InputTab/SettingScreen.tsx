@@ -1,6 +1,6 @@
 // screens/InputTab/SettingScreen.tsx
-import React, { useState, useEffect, useLayoutEffect, useCallback } from 'react';
-import { View, Text, StyleSheet, FlatList, TouchableOpacity, Alert, ActivityIndicator, Platform } from 'react-native';
+import React, { useState, useEffect, useLayoutEffect, useCallback, useRef } from 'react';
+import { View, Text, StyleSheet, Alert, ActivityIndicator, Platform, Keyboard, TouchableOpacity } from 'react-native';
 import type { StackNavigationProp } from '@react-navigation/stack';
 import { useNavigation, useIsFocused } from '@react-navigation/native';
 import DraggableFlatList, { RenderItemParams, ScaleDecorator } from 'react-native-draggable-flatlist';
@@ -8,376 +8,601 @@ import Ionicons from '@expo/vector-icons/Ionicons';
 
 import { InputStackNavigatorParamList } from '../../navigation/types';
 import { theme } from '../../theme';
-import { Quota } from '../../types/data';
+import { UserSelectedQuota, QuotaSetting } from '../../types/data';
+import { supabase } from '../../services/supabase';
 import {
-  getQuotasFromStorage,
-  addQuotaToStorage,
-  deleteQuotaFromStorage,
-  saveQuotasToStorage,
-  updateQuotaInStorage,
+  getQuotaSettingByProductCode,
+  getUserSelectedQuotas,
+  addUserSelectedQuota,
+  deleteUserSelectedQuota,
+  saveUserSelectedQuotasOrder,
 } from '../../services/storage';
 
-// Custom components (nếu bạn đã tạo)
-import Button from '../../components/common/Button'; // Đường dẫn tới Button của bạn
-import TextInput from '../../components/common/TextInput'; // Đường dẫn tới TextInput của bạn
-import ModalWrapper from '../../components/common/ModalWrapper'; // Đường dẫn tới ModalWrapper của bạn
-// import Card from '@/components/common/Card'; // Nếu dùng Card để bao bọc item
+import Button from '../../components/common/Button';
+import TextInput from '../../components/common/TextInput';
+import ModalWrapper from '../../components/common/ModalWrapper';
 
 type SettingScreenNavigationProp = StackNavigationProp<InputStackNavigatorParamList, 'Settings'>;
-
-interface QuotaFormData {
-  id?: string;
-  stageCode: string;
-  dailyQuota: string; // Input sẽ là string, cần chuyển đổi
-}
 
 export default function SettingScreen() {
   const navigation = useNavigation<SettingScreenNavigationProp>();
   const isFocused = useIsFocused();
 
-  const [quotas, setQuotas] = useState<Quota[]>([]);
+  const [userSelectedQuotas, setUserSelectedQuotas] = useState<UserSelectedQuota[]>([]);
   const [isLoading, setIsLoading] = useState(false);
-  const [isModalVisible, setIsModalVisible] = useState(false);
+  const [isAddModalVisible, setIsAddModalVisible] = useState(false);
   const [isEditMode, setIsEditMode] = useState(false);
-  const [currentQuota, setCurrentQuota] = useState<QuotaFormData | null>(null);
-  const [errors, setErrors] = useState<{ stageCode?: string; dailyQuota?: string }>({});
 
-  const loadQuotas = useCallback(async () => {
-    setIsLoading(true);
-    const storedQuotas = await getQuotasFromStorage();
-    setQuotas(storedQuotas);
-    setIsLoading(false);
-  }, []);
+  const [currentProductCodeInput, setCurrentProductCodeInput] = useState('');
+  const [foundProduct, setFoundProduct] = useState<QuotaSetting | null>(null);
+  const [productSearchMessage, setProductSearchMessage] = useState<string | null>(null);
+  const [productSearchMessageType, setProductSearchMessageType] = useState<'success' | 'error' | null>(null);
+  const [isSearchingProduct, setIsSearchingProduct] = useState(false);
+
+  const [isDeleteConfirmModalVisible, setIsDeleteConfirmModalVisible] = useState(false);
+  const [quotaToDelete, setQuotaToDelete] = useState<UserSelectedQuota | null>(null);
+  
+  const [userId, setUserId] = useState<string | null>(null);
+  const searchTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
   useEffect(() => {
-    if (isFocused) {
-      loadQuotas();
-      // Reset edit mode khi màn hình được focus lại (trừ khi đang mở modal)
-      if (!isModalVisible) {
-        setIsEditMode(false);
+    const fetchUser = async () => {
+      try {
+        const { data: { user }, error: userError } = await supabase.auth.getUser();
+        if (userError) {
+          console.error("[SettingScreen] Lỗi khi lấy user từ Supabase:", userError);
+          Alert.alert("Lỗi Xác Thực", "Không thể lấy thông tin người dùng. Vui lòng thử đăng nhập lại.");
+          return;
+        }
+        if (user) {
+          setUserId(user.id);
+        } else {
+          console.warn("[SettingScreen] Không tìm thấy user nào đang đăng nhập.");
+        }
+      } catch (error) {
+        console.error("[SettingScreen] Exception khi lấy thông tin người dùng:", error);
+        Alert.alert("Lỗi", "Có lỗi nghiêm trọng xảy ra khi lấy thông tin người dùng.");
       }
-    }
-  }, [isFocused, loadQuotas, isModalVisible]);
+    };
+    fetchUser();
+  }, []);
 
-  // Cập nhật nút trên Header
+  const loadUserQuotas = useCallback(async () => {
+    if (!userId) {
+      return; 
+    }
+    setIsLoading(true);
+    try {
+      const storedQuotas = await getUserSelectedQuotas(userId);
+      setUserSelectedQuotas(storedQuotas);
+    } catch (error) {
+      console.error("[SettingScreen] loadUserQuotas error:", error);
+      Alert.alert("Lỗi", "Không thể tải danh sách định mức đã chọn.");
+    } finally {
+      setIsLoading(false);
+    }
+  }, [userId]);
+
+  useEffect(() => {
+    if (isFocused && userId) {
+      loadUserQuotas();
+    }
+  }, [isFocused, userId, loadUserQuotas]);
+
+  // ++ DI CHUYỂN handleSaveOrder LÊN TRÊN useLayoutEffect ++
+  const handleSaveOrder = useCallback(async () => {
+    if (!userId) {
+      Alert.alert("Lỗi", "Không tìm thấy thông tin người dùng để lưu thứ tự.");
+      return;
+    }
+    if (userSelectedQuotas.length === 0 && isEditMode) {
+        setIsEditMode(false);
+        return;
+    }
+            
+    setIsLoading(true);
+    const success = await saveUserSelectedQuotasOrder(
+      userId,
+      userSelectedQuotas.map(q => ({ product_code: q.product_code, zindex: q.zindex }))
+    );
+    if (success) {
+      Alert.alert("Đã lưu", "Thứ tự định mức đã được cập nhật.");
+    } else {
+      Alert.alert("Lỗi", "Không thể lưu thứ tự định mức. Vui lòng thử lại.");
+    }
+    setIsEditMode(false); 
+    setIsLoading(false);
+  }, [userId, userSelectedQuotas, isEditMode]);
+
   useLayoutEffect(() => {
     navigation.setOptions({
       headerRight: () => (
         <TouchableOpacity
           onPress={() => {
             if (isEditMode) {
-              // Lưu trạng thái sắp xếp và thoát chế độ Edit
-              handleSaveChangesInEditMode();
+              handleSaveOrder(); // Bây giờ handleSaveOrder đã được khai báo
             } else {
               setIsEditMode(true);
             }
           }}
-          style={{ marginRight: theme.spacing.md }}
+          style={{ marginRight: theme.spacing['level-4'], padding: theme.spacing['level-1'] }}
         >
-          <Text style={{ color: theme.colors.white, fontSize: 16 }}>
-            {isEditMode ? 'Lưu Sắp Xếp' : 'Sửa'}
+          <Text style={{ 
+            color: theme.colors.textOnPrimary,
+            fontSize: theme.typography['level-4'].fontSize,
+            fontWeight: theme.typography['level-4-bold'].fontWeight
+          }}>
+            {isEditMode ? 'Lưu Sắp Xếp' : 'Sửa Thứ Tự'}
           </Text>
         </TouchableOpacity>
       ),
     });
-  }, [navigation, isEditMode, quotas]); // Thêm quotas vào dependency để cập nhật khi có thay đổi
+  }, [navigation, isEditMode, userSelectedQuotas, handleSaveOrder]);
 
-  const handleOpenModal = (quotaToEdit?: Quota) => {
-    if (quotaToEdit) {
-      setCurrentQuota({
-        id: quotaToEdit.id,
-        stageCode: quotaToEdit.stageCode,
-        dailyQuota: quotaToEdit.dailyQuota.toString(),
-      });
-    } else {
-      setCurrentQuota({ stageCode: '', dailyQuota: '' });
-    }
-    setErrors({});
-    setIsModalVisible(true);
+
+  const handleOpenAddModal = () => {
+    setCurrentProductCodeInput('');
+    setFoundProduct(null);
+    setProductSearchMessage(null);
+    setProductSearchMessageType(null);
+    setIsAddModalVisible(true);
   };
 
-  const handleCloseModal = () => {
-    setIsModalVisible(false);
-    setCurrentQuota(null);
-    setErrors({});
+  const handleCloseAddModal = () => {
+    setIsAddModalVisible(false);
+    setCurrentProductCodeInput('');
+    setFoundProduct(null);
+    setProductSearchMessage(null);
+    setProductSearchMessageType(null);
   };
 
-  const validateForm = (): boolean => {
-    const newErrors: { stageCode?: string; dailyQuota?: string } = {};
-    if (!currentQuota?.stageCode.trim()) {
-      newErrors.stageCode = 'Mã công đoạn không được để trống.';
+  const handleProductCodeChange = (text: string) => {
+    const upperCaseText = text.toUpperCase();
+    setCurrentProductCodeInput(upperCaseText);
+    setFoundProduct(null); 
+    setProductSearchMessage(null);
+    setProductSearchMessageType(null);
+
+    if (searchTimeoutRef.current) {
+      clearTimeout(searchTimeoutRef.current);
     }
-    const quotaNum = parseFloat(currentQuota?.dailyQuota || '');
-    if (isNaN(quotaNum) || quotaNum <= 0) {
-      newErrors.dailyQuota = 'Định mức ngày phải là một số dương.';
+
+    if (upperCaseText.trim() === '') {
+      setIsSearchingProduct(false);
+      return;
     }
-    setErrors(newErrors);
-    return Object.keys(newErrors).length === 0;
+    
+    setIsSearchingProduct(true);
+    searchTimeoutRef.current = setTimeout(async () => {
+      try {
+        const productDetails = await getQuotaSettingByProductCode(upperCaseText.trim());
+        if (productDetails) {
+          setFoundProduct(productDetails);
+          setProductSearchMessage(`Tìm thấy: ${productDetails.product_name}`);
+          setProductSearchMessageType('success');
+        } else {
+          setFoundProduct(null);
+          setProductSearchMessage(`Mã sản phẩm '${upperCaseText.trim()}' không tồn tại.`);
+          setProductSearchMessageType('error');
+        }
+      } catch (error) {
+        console.error("[SettingScreen] Error during product code search:", error);
+        setFoundProduct(null);
+        setProductSearchMessage("Lỗi khi tra cứu mã sản phẩm. Vui lòng thử lại.");
+        setProductSearchMessageType('error');
+      } finally {
+        setIsSearchingProduct(false);
+      }
+    }, 600); 
   };
 
-  const handleSaveQuota = async () => {
-    if (!currentQuota || !validateForm()) {
+  const handleAddProduct = async () => {
+    if (!userId) {
+      Alert.alert("Lỗi", "Không thể xác định người dùng.");
+      return;
+    }
+    if (!foundProduct || !currentProductCodeInput.trim()) {
+      Alert.alert("Lỗi", "Vui lòng nhập mã sản phẩm hợp lệ và đã được tìm thấy.");
       return;
     }
 
-    setIsLoading(true);
-    const { id, stageCode, dailyQuota } = currentQuota;
-    const quotaValue = parseFloat(dailyQuota);
-
-    let success = false;
-    if (id) { // Cập nhật định mức hiện có
-      const updated = await updateQuotaInStorage({ id, stageCode, dailyQuota: quotaValue, order: quotas.find(q=>q.id === id)?.order ?? 0 });
-      if (updated) success = true;
-      else Alert.alert("Lỗi", "Cập nhật định mức thất bại. Mã công đoạn có thể đã tồn tại.");
-    } else { // Thêm định mức mới
-      const added = await addQuotaToStorage({ stageCode, dailyQuota: quotaValue });
-      if (added) success = true;
-      else Alert.alert("Lỗi", "Thêm định mức thất bại. Mã công đoạn có thể đã tồn tại.");
-    }
-
-    if (success) {
-      await loadQuotas();
-      handleCloseModal();
-    }
-    setIsLoading(false);
-  };
-
-  const handleDeleteQuota = (quotaId: string) => {
-    Alert.alert(
-      'Xác nhận xóa',
-      'Bạn có chắc chắn muốn xóa định mức này?',
-      [
-        { text: 'Hủy', style: 'cancel' },
-        {
-          text: 'Xóa',
-          style: 'destructive',
-          onPress: async () => {
-            setIsLoading(true);
-            await deleteQuotaFromStorage(quotaId);
-            // Cập nhật lại state quotas mà không cần gọi API nếu chỉ xóa
-            setQuotas(prevQuotas => prevQuotas.filter(q => q.id !== quotaId).map((q, index) => ({ ...q, order: index })));
-            // await loadQuotas(); // Hoặc gọi lại loadQuotas để chắc chắn
-            setIsLoading(false);
-          },
-        },
-      ]
+    const isAlreadyAdded = userSelectedQuotas.some(
+        (quota) => quota.product_code === foundProduct.product_code
     );
-  };
 
-  const handleSaveChangesInEditMode = async () => {
+    if (isAlreadyAdded) {
+        Alert.alert("Thông báo", `Sản phẩm '${foundProduct.product_code}' đã có trong danh sách của bạn.`);
+        return;
+    }
+
     setIsLoading(true);
-    await saveQuotasToStorage(quotas); // Lưu lại toàn bộ danh sách quotas với thứ tự mới
-    setIsEditMode(false);
-    setIsLoading(false);
-    Alert.alert("Đã lưu", "Thứ tự định mức đã được cập nhật.");
+    Keyboard.dismiss();
+    try {
+      const newOrder = userSelectedQuotas.length; 
+      const addedQuota = await addUserSelectedQuota(
+        userId,
+        foundProduct.product_code,
+        foundProduct.product_name,
+        newOrder
+      );
+
+      if (addedQuota) {
+        await loadUserQuotas(); 
+        handleCloseAddModal();
+        Alert.alert("Thành công", `Đã thêm sản phẩm '${addedQuota.product_name}'.`);
+      } else {
+         Alert.alert("Lỗi", `Không thể thêm sản phẩm. Mã '${foundProduct.product_code}' có thể đã tồn tại hoặc có lỗi khác từ server.`);
+      }
+    } catch (error) {
+      console.error("[SettingScreen] Exception during handleAddProduct:", error);
+      Alert.alert("Lỗi", "Đã có lỗi xảy ra khi thêm sản phẩm.");
+    } finally {
+      setIsLoading(false);
+    }
   };
 
+  const handleDeleteQuotaPress = (productCodeToDelete: string) => {
+    if (!userId) {
+      Alert.alert("Lỗi", "Không tìm thấy thông tin người dùng."); 
+      return;
+    }
+    if (!isEditMode) {
+        return;
+    }
+    const quota = userSelectedQuotas.find(q => q.product_code === productCodeToDelete);
+    if (!quota) {
+      return;
+    }
+    setQuotaToDelete(quota); 
+    setIsDeleteConfirmModalVisible(true); 
+  };
 
-const renderQuotaItem = ({ item, drag, isActive, getIndex }: RenderItemParams<Quota>): React.ReactNode => {
+  const handleCancelDelete = () => {
+    setIsDeleteConfirmModalVisible(false);
+    setQuotaToDelete(null);
+  };
+
+  const handleConfirmDelete = async () => {
+    if (!quotaToDelete || !userId) {
+      setIsDeleteConfirmModalVisible(false);
+      setQuotaToDelete(null);
+      Alert.alert("Lỗi", "Có lỗi xảy ra, không thể xác định mục cần xóa.");
+      return;
+    }
+
+    const productCodeToDelete = quotaToDelete.product_code;
+    const productName = quotaToDelete.product_name || productCodeToDelete;
+
+    setIsLoading(true);
+    setIsDeleteConfirmModalVisible(false); 
+
+    const deleteSuccess = await deleteUserSelectedQuota(userId, productCodeToDelete);
+    
+    if (deleteSuccess) {
+      Alert.alert("Đã xóa", `'${productName}' đã được xóa.`);
+      
+      const remainingQuotas = userSelectedQuotas.filter(q => q.product_code !== productCodeToDelete);
+      const updatedQuotasWithNewZIndex = remainingQuotas.map((q, index) => ({ ...q, zindex: index }));
+      setUserSelectedQuotas(updatedQuotasWithNewZIndex); 
+
+      if (updatedQuotasWithNewZIndex.length > 0) {
+        const saveOrderSuccess = await saveUserSelectedQuotasOrder(
+            userId, 
+            updatedQuotasWithNewZIndex.map(q => ({ product_code: q.product_code, zindex: q.zindex }))
+        );
+        if (!saveOrderSuccess) {
+          console.error("[SettingScreen] Failed to save order of remaining items post-delete.");
+          Alert.alert("Lỗi cập nhật thứ tự", "Xóa thành công nhưng không thể cập nhật lại thứ tự các mục còn lại.");
+        }
+      }
+    } else {
+      Alert.alert("Lỗi", "Không thể xóa định mức. Vui lòng thử lại.");
+    }
+    setQuotaToDelete(null); 
+    setIsLoading(false);
+  };
+
+  // handleSaveOrder đã được di chuyển lên trên
+
+  const renderQuotaItem = ({ item, drag, isActive }: RenderItemParams<UserSelectedQuota>): React.ReactNode => {
     return (
       <ScaleDecorator>
         <TouchableOpacity
-          onLongPress={isEditMode ? drag : undefined} // Chỉ cho phép kéo khi ở edit mode
-          disabled={isActive}
+          onLongPress={isEditMode ? drag : undefined}
+          disabled={isActive || !isEditMode} 
           style={[
             styles.itemContainer,
             isActive && styles.itemActive,
-            // Platform.OS === 'web' && isEditMode && { cursor: 'grab' } // Thêm cursor cho web
+            !isEditMode && styles.itemNonEditable, 
           ]}
-          onPress={() => {
-            if (!isEditMode) { // Mở modal để sửa khi không ở edit mode
-                handleOpenModal(item);
-            }
-          }}
         >
           {isEditMode && (
-            <TouchableOpacity onPress={() => handleDeleteQuota(item.id)} style={styles.deleteButton}>
-              <Ionicons name="remove-circle" size={24} color={theme.colors.danger} />
+            <TouchableOpacity 
+              onPress={() => {
+                handleDeleteQuotaPress(item.product_code); 
+              }} 
+              style={styles.deleteButton}
+              hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }} 
+            >
+              <Ionicons name="remove-circle" size={26} color={theme.colors.danger} />
             </TouchableOpacity>
           )}
+          {!isEditMode && ( 
+             <View style={{width: styles.deleteButton.paddingHorizontal ? 26 + (styles.deleteButton.paddingHorizontal as number) * 2 : 26, marginRight: styles.deleteButton.marginRight }} />
+          )}
+
           <View style={styles.itemTextContainer}>
-            <Text style={styles.itemStageCode}>{item.stageCode}</Text>
-            <Text style={styles.itemDailyQuota}>Định mức: {item.dailyQuota}</Text>
+            <Text style={styles.itemProductCode}>{item.product_code}</Text>
+            <Text style={styles.itemProductName}>{item.product_name || '(Chưa có tên)'}</Text>
           </View>
+
           {isEditMode ? (
-            <TouchableOpacity onPressIn={drag} disabled={isActive} style={styles.dragHandle}>
-                 <Ionicons name="reorder-three-outline" size={28} color={theme.colors.grey} />
+            <TouchableOpacity 
+              onPressIn={drag} 
+              disabled={isActive} 
+              style={styles.dragHandle}
+              hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }} 
+            >
+                 <Ionicons name="reorder-three-outline" size={30} color={theme.colors.grey} />
             </TouchableOpacity>
           ) : (
-            <Ionicons name="chevron-forward" size={20} color={theme.colors.grey} />
+            <View style={{width: Platform.OS === 'web' ? 40 : 30, marginLeft: styles.dragHandle.marginLeft as number }} />
           )}
         </TouchableOpacity>
       </ScaleDecorator>
     );
   };
-
-
-  if (isLoading && !isModalVisible) { // Chỉ hiển thị loading toàn màn hình khi không có modal
+  
+  if (isLoading && !isAddModalVisible && !isSearchingProduct && !isDeleteConfirmModalVisible) { 
     return (
       <View style={styles.centered}>
         <ActivityIndicator size="large" color={theme.colors.primary} />
+        <Text style={{color: theme.colors.textSecondary, marginTop: theme.spacing['level-2']}}>Đang tải dữ liệu...</Text>
       </View>
     );
   }
 
   return (
     <View style={styles.container}>
-      {quotas.length === 0 && !isLoading ? (
+      {userSelectedQuotas.length === 0 && !isLoading ? (
         <View style={styles.centered}>
-            <Text style={styles.emptyText}>Chưa có định mức nào.</Text>
-            <Text style={styles.emptyText}>Nhấn "Thêm định mức" để bắt đầu.</Text>
+            <Text style={styles.emptyText}>Chưa có định mức nào được chọn.</Text>
+            <Text style={styles.emptyText}>Nhấn "Thêm Định Mức" để bắt đầu.</Text>
         </View>
       ) : (
         <DraggableFlatList
-          data={quotas}
+          data={userSelectedQuotas}
           renderItem={renderQuotaItem}
-          keyExtractor={(item) => item.id}
+          keyExtractor={(item) => item.product_code} 
           onDragEnd={({ data: reorderedData }) => {
-            // Cập nhật state với thứ tự mới, `order` sẽ được cập nhật khi lưu
-            setQuotas(reorderedData);
+            const updatedDataWithNewZIndex = reorderedData.map((q, index) => ({
+              ...q,
+              zindex: index, 
+            }));
+            setUserSelectedQuotas(updatedDataWithNewZIndex);
           }}
-          containerStyle={{ flex: 1 }}
-          ListHeaderComponent={<View style={{height: theme.spacing.sm}} />} // Khoảng trống ở đầu list
-          ListFooterComponent={<View style={{height: theme.spacing.md}}/>} // Khoảng trống ở cuối list
+          containerStyle={{ flex: 1, paddingTop: theme.spacing['level-2'] }}
+          ListFooterComponent={<View style={{height: isEditMode ? theme.spacing['level-4'] : 90}}/>}
+          activationDistance={Platform.OS === 'web' ? 5 : 10} 
         />
       )}
 
-      {!isEditMode && ( // Chỉ hiển thị nút "Thêm định mức" khi không ở chế độ sửa
+      {!isEditMode && (
         <Button
           title="Thêm Định Mức Mới"
-          onPress={() => handleOpenModal()}
+          onPress={handleOpenAddModal} 
           style={styles.addButton}
         />
       )}
 
       <ModalWrapper
-        visible={isModalVisible}
-        onClose={handleCloseModal}
-        // Bỏ prop `title` ở đây để không hiển thị header mặc định của ModalWrapper
-        // title={currentQuota?.id ? 'Sửa Định Mức' : 'Thêm Định Mức Mới'}
+        visible={isAddModalVisible}
+        onClose={handleCloseAddModal} 
       >
-        {/* Thêm header tùy chỉnh vào đây */}
         <View style={styles.customModalHeaderContainer}>
-          <Text style={styles.customModalHeaderText}>
-            {currentQuota?.id ? 'Sửa Định Mức' : 'Thêm Định Mức Mới'}
-          </Text>
+          <Text style={styles.customModalHeaderText}>Thêm Định Mức</Text>
         </View>
-
-        {/* Phần nội dung còn lại của Modal không thay đổi */}
-        <View style={styles.modalInnerContent}> {/* Đổi tên style để tránh trùng với style cũ nếu có */}
+        <View style={styles.modalInnerContent}>
           <TextInput
-            label="Mã công đoạn"
-            value={currentQuota?.stageCode || ''}
-            onChangeText={(text) => setCurrentQuota(prev => prev ? { ...prev, stageCode: text.toUpperCase() } : { stageCode: text.toUpperCase(), dailyQuota: '' })}
-            placeholder="Ví dụ: 5.2" // Cập nhật placeholder
-            error={errors.stageCode}
-            touched={!!errors.stageCode}
+            label="Mã Sản Phẩm (Product Code)"
+            value={currentProductCodeInput}
+            onChangeText={handleProductCodeChange}
+            placeholder="Ví dụ: 5.2KA, L001..."
             autoCapitalize="characters"
+            maxLength={20}
+            onSubmitEditing={Keyboard.dismiss} 
           />
-          <TextInput
-            label="Định mức ngày"
-            value={currentQuota?.dailyQuota || ''}
-            onChangeText={(text) => setCurrentQuota(prev => prev ? { ...prev, dailyQuota: text.replace(/[^0-9.]/g, '') } : { stageCode: '', dailyQuota: text.replace(/[^0-9.]/g, '') })}
-            placeholder="Ví dụ: 1135" // Cập nhật placeholder
-            keyboardType="numeric"
-            error={errors.dailyQuota}
-            touched={!!errors.dailyQuota}
-          />
+          {isSearchingProduct && <ActivityIndicator size="small" color={theme.colors.primary} style={{ marginVertical: theme.spacing['level-2'] }}/>}
+          {productSearchMessage && (
+            <Text style={[
+              styles.productSearchMessage,
+              productSearchMessageType === 'success' && styles.successText,
+              productSearchMessageType === 'error' && styles.errorTextModal,
+            ]}>
+              {productSearchMessage}
+            </Text>
+          )}
           <View style={styles.modalActions}>
-            <Button title="Hủy" onPress={handleCloseModal} type="secondary" style={styles.modalButton} />
-            <Button title={isLoading ? "Đang lưu..." : "Lưu"} onPress={handleSaveQuota} type="primary" style={styles.modalButton} disabled={isLoading} />
+            <Button title="Hủy" onPress={handleCloseAddModal} type="secondary" style={styles.modalButton} />
+            <Button
+              title={isLoading ? "Đang thêm..." : "Thêm vào danh sách"}
+              onPress={handleAddProduct}
+              type="primary"
+              style={styles.modalButton}
+              disabled={isLoading || !foundProduct || isSearchingProduct}
+            />
           </View>
         </View>
       </ModalWrapper>
+
+      {quotaToDelete && (
+        <ModalWrapper
+          visible={isDeleteConfirmModalVisible}
+          onClose={handleCancelDelete}
+        >
+          <View style={styles.confirmDeleteModalContainer}>
+            <Text style={styles.confirmDeleteTitle}>Xác nhận xóa</Text>
+            <Text style={styles.confirmDeleteMessage}>
+              Bạn có chắc chắn muốn xóa sản phẩm này khỏi danh sách đã chọn?
+            </Text>
+            <View style={styles.confirmDeleteDetails}>
+              <Text style={styles.detailTextBold}>Mã SP: {quotaToDelete.product_code}</Text>
+              <Text style={styles.detailText}>Tên SP: {quotaToDelete.product_name || '(Chưa có tên)'}</Text>
+            </View>
+            <View style={styles.modalActions}>
+              <Button title="Hủy" onPress={handleCancelDelete} type="secondary" style={styles.modalButton} />
+              <Button 
+                title={isLoading ? "Đang xóa..." : "Xóa"} 
+                onPress={handleConfirmDelete} 
+                type="danger" 
+                style={styles.modalButton} 
+                disabled={isLoading}
+              />
+            </View>
+          </View>
+        </ModalWrapper>
+      )}
     </View>
   );
 }
 
+// Styles giữ nguyên như lần cập nhật giao diện trước đó
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: theme.colors.lightGrey, // Nền hơi xám nhẹ
+    backgroundColor: theme.colors.background2,
   },
   customModalHeaderContainer: {
-    paddingBottom: theme.spacing.md,
-    marginBottom: theme.spacing.md,
+    paddingBottom: theme.spacing['level-4'],
+    marginBottom: theme.spacing['level-4'],
     borderBottomWidth: 1,
     borderBottomColor: theme.colors.borderColor,
-    alignItems: 'center', // Căn giữa tiêu đề
+    alignItems: 'center',
   },
   customModalHeaderText: {
-    fontSize: theme.typography.h3.fontSize, // Kích thước lớn, đậm
-    fontWeight: theme.typography.h3.fontWeight,
+    fontSize: theme.typography['level-6'].fontSize,
+    fontWeight: theme.typography['level-6-bold'].fontWeight,
     color: theme.colors.text,
   },
-  modalInnerContent: { // Style cho phần nội dung chính bên trong modal (Inputs, Buttons)
-    // Bạn có thể thêm padding ở đây nếu cần,
-    // hoặc nếu ModalWrapper đã có padding cho children thì không cần.
-    // Ví dụ: paddingHorizontal: theme.spacing.md,
+  modalInnerContent: { 
+     paddingHorizontal: theme.spacing['level-1'], 
   },
-  centered: {
+  centered: { 
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    padding: theme.spacing.lg,
+    padding: theme.spacing['level-6'],
   },
-  emptyText: {
-    fontSize: theme.typography.body.fontSize,
+  emptyText: { 
+    fontSize: theme.typography['level-4'].fontSize,
     color: theme.colors.textSecondary,
     textAlign: 'center',
-    marginBottom: theme.spacing.sm,
+    marginBottom: theme.spacing['level-2'],
   },
-  itemContainer: {
-    backgroundColor: theme.colors.white,
-    paddingVertical: theme.spacing.md,
-    paddingHorizontal: theme.spacing.md,
-    marginHorizontal: theme.spacing.md,
-    marginVertical: theme.spacing.xs,
-    borderRadius: theme.borderRadius.md,
+  itemContainer: { 
+    backgroundColor: theme.colors.cardBackground,
+    paddingVertical: theme.spacing['level-4'],
+    paddingHorizontal: theme.spacing['level-4'],
+    marginHorizontal: theme.spacing['level-4'],
+    marginVertical: theme.spacing['level-1'] + 2,
+    borderRadius: theme.borderRadius['level-4'],
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
     ...theme.shadow.sm,
+    borderWidth: 1,
+    borderColor: theme.colors.borderColor,
   },
-  itemActive: {
-    ...theme.shadow.lg, // Nổi bật hơn khi đang kéo
-    backgroundColor: theme.colors.light,
+  itemActive: { 
+    ...theme.shadow.lg,
+    backgroundColor: theme.colors.background1,
+    borderColor: theme.colors.primary,
   },
-  itemTextContainer: {
+  itemNonEditable: {},
+  itemTextContainer: { 
     flex: 1,
   },
-  itemStageCode: {
-    fontSize: theme.typography.h4.fontSize,
-    fontWeight: theme.typography.h4.fontWeight,
-    color: theme.colors.text,
+  itemProductCode: { 
+    fontSize: theme.typography['level-5'].fontSize,
+    fontWeight: theme.typography['level-5-bold'].fontWeight,
+    color: theme.colors.primary, 
   },
-  itemDailyQuota: {
-    fontSize: theme.typography.bodySmall.fontSize,
+  itemProductName: { 
+    fontSize: theme.typography['level-3'].fontSize,
     color: theme.colors.textSecondary,
-    marginTop: theme.spacing.xs,
+    marginTop: theme.spacing['level-1'],
   },
-  deleteButton: {
-    marginRight: theme.spacing.md,
-    padding: theme.spacing.xs,
+  deleteButton: { 
+    paddingHorizontal: theme.spacing['level-2'], 
+    paddingVertical: theme.spacing['level-1'],
+    marginRight: theme.spacing['level-2'], 
   },
-  dragHandle: {
-    marginLeft: theme.spacing.sm,
-    padding: theme.spacing.xs,
+  dragHandle: { 
+    paddingHorizontal: theme.spacing['level-2'], 
+    paddingVertical: theme.spacing['level-1'],
+    marginLeft: theme.spacing['level-2'], 
   },
-  addButton: {
-    margin: theme.spacing.md,
+  addButton: { 
+    marginHorizontal: theme.spacing['level-6'],
+    marginVertical: theme.spacing['level-4'],
   },
-  // Modal styles
-  modalContent: {
-    paddingVertical: theme.spacing.md, // Không cần padding ngang vì ModalWrapper đã có
-  },
-  modalActions: {
+  modalActions: { 
     flexDirection: 'row',
-    justifyContent: 'space-around', // Hoặc 'flex-end' nếu muốn các nút về 1 phía
-    marginTop: theme.spacing.lg,
+    justifyContent: 'space-around',
+    marginTop: theme.spacing['level-6'],
+    marginBottom: theme.spacing['level-2'],
   },
-  modalButton: {
-    flex: 1, // Cho các nút có chiều rộng bằng nhau
-    marginHorizontal: theme.spacing.sm, // Khoảng cách giữa các nút
+  modalButton: { 
+    flex: 1,
+    marginHorizontal: theme.spacing['level-2'],
+  },
+  productSearchMessage: { 
+    fontSize: theme.typography['level-3'].fontSize,
+    textAlign: 'center',
+    marginVertical: theme.spacing['level-2'],
+    padding: theme.spacing['level-2'],
+    borderRadius: theme.borderRadius['level-2'],
+    backgroundColor: theme.colors.background1,
+  },
+  successText: { 
+    color: theme.colors.success,
+  },
+  errorTextModal: { 
+    color: theme.colors.danger,
+  },
+  confirmDeleteModalContainer: { 
+    alignItems: 'center',
+    padding: theme.spacing['level-2'], 
+  },
+  confirmDeleteTitle: { 
+    fontSize: theme.typography['level-6'].fontSize,
+    fontWeight: theme.typography['level-6-bold'].fontWeight,
+    color: theme.colors.text,
+    marginBottom: theme.spacing['level-4'],
+    textAlign: 'center',
+  },
+  confirmDeleteMessage: { 
+    fontSize: theme.typography['level-4'].fontSize,
+    color: theme.colors.textSecondary,
+    textAlign: 'center',
+    marginBottom: theme.spacing['level-6'], 
+  },
+  confirmDeleteDetails: { 
+    alignSelf: 'stretch', 
+    backgroundColor: theme.colors.background1,
+    padding: theme.spacing['level-4'],
+    borderRadius: theme.borderRadius['level-4'],
+    marginBottom: theme.spacing['level-6'],
+  },
+  detailText: { 
+    fontSize: theme.typography['level-3'].fontSize,
+    color: theme.colors.text,
+    marginBottom: theme.spacing['level-1'],
+  },
+  detailTextBold: { 
+    fontSize: theme.typography['level-3'].fontSize,
+    color: theme.colors.text,
+    fontWeight: 'bold',
+    marginBottom: theme.spacing['level-1'],
   },
 });
