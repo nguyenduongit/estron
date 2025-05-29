@@ -26,7 +26,7 @@ type SettingScreenNavigationProp = StackNavigationProp<InputStackNavigatorParamL
 
 export default function SettingScreen() {
   const navigation = useNavigation<SettingScreenNavigationProp>();
-  const isFocused = useIsFocused();
+  const isFocused = useIsFocused(); // Dòng 28 trong ảnh chụp lỗi
 
   const [userSelectedQuotas, setUserSelectedQuotas] = useState<UserSelectedQuota[]>([]);
   const [isLoading, setIsLoading] = useState(false);
@@ -89,7 +89,8 @@ export default function SettingScreen() {
     }
   }, [isFocused, userId, loadUserQuotas]);
 
-  // ++ DI CHUYỂN handleSaveOrder LÊN TRÊN useLayoutEffect ++
+  // ++ ĐOẠN CODE ĐÃ ĐƯỢC DI CHUYỂN LÊN TRÊN ++
+  // Khai báo handleSaveOrder trước khi nó được sử dụng trong useLayoutEffect
   const handleSaveOrder = useCallback(async () => {
     if (!userId) {
       Alert.alert("Lỗi", "Không tìm thấy thông tin người dùng để lưu thứ tự.");
@@ -113,6 +114,8 @@ export default function SettingScreen() {
     setIsEditMode(false); 
     setIsLoading(false);
   }, [userId, userSelectedQuotas, isEditMode]);
+  // -- KẾT THÚC ĐOẠN CODE ĐÃ DI CHUYỂN --
+
 
   useLayoutEffect(() => {
     navigation.setOptions({
@@ -120,7 +123,7 @@ export default function SettingScreen() {
         <TouchableOpacity
           onPress={() => {
             if (isEditMode) {
-              handleSaveOrder(); // Bây giờ handleSaveOrder đã được khai báo
+              handleSaveOrder(); // Lỗi 'used before its declaration' sẽ biến mất tại đây
             } else {
               setIsEditMode(true);
             }
@@ -137,7 +140,7 @@ export default function SettingScreen() {
         </TouchableOpacity>
       ),
     });
-  }, [navigation, isEditMode, userSelectedQuotas, handleSaveOrder]);
+  }, [navigation, isEditMode, userSelectedQuotas, handleSaveOrder]); // handleSaveOrder vẫn cần trong dependencies của useLayoutEffect
 
 
   const handleOpenAddModal = () => {
@@ -302,8 +305,6 @@ export default function SettingScreen() {
     setIsLoading(false);
   };
 
-  // handleSaveOrder đã được di chuyển lên trên
-
   const renderQuotaItem = ({ item, drag, isActive }: RenderItemParams<UserSelectedQuota>): React.ReactNode => {
     return (
       <ScaleDecorator>
@@ -466,7 +467,6 @@ export default function SettingScreen() {
   );
 }
 
-// Styles giữ nguyên như lần cập nhật giao diện trước đó
 const styles = StyleSheet.create({
   container: {
     flex: 1,

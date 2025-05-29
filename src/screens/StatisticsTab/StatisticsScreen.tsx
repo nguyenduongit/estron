@@ -9,7 +9,6 @@ import {
   Dimensions,
   TouchableOpacity,
   Platform,
-  Linking,
   Alert,
   LayoutChangeEvent
 } from 'react-native';
@@ -22,7 +21,6 @@ import * as Clipboard from 'expo-clipboard';
 import { BottomTabNavigatorParamList } from '../../navigation/types';
 import { theme } from '../../theme';
 import { EstronMonthPeriod, getToday, getEstronMonthPeriod, calculateStandardWorkdays, formatToYYYYMMDD } from '../../utils/dateUtils';
-import { DailySupplementaryData } from '../../types/data';
 import {
   getProductionEntriesByDateRange,
   getSupplementaryDataByDateRange,

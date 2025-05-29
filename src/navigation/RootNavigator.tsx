@@ -2,7 +2,7 @@
 import React, { useState, useEffect } from 'react';
 import {
   NavigationContainer,
-  DefaultTheme as NavigationDefaultTheme, // Đổi tên để tránh xung đột nếu theme của bạn cũng tên là DefaultTheme
+  DefaultTheme as NavigationDefaultTheme, 
 } from '@react-navigation/native';
 import { NavigationIndependentTree } from '@react-navigation/native';
 import { View, ActivityIndicator, StyleSheet } from 'react-native';
@@ -10,7 +10,7 @@ import { supabase } from '../services/supabase';
 import { AuthNavigator } from './AuthNavigator';
 import  AppNavigator  from './AppNavigator';
 import { Session } from '@supabase/supabase-js';
-import { theme } from '../theme'; // Sử dụng trực tiếp theme đã import
+import { theme } from '../theme'; 
 
 export default function RootNavigator() {
   const [session, setSession] = useState<Session | null>(null);
@@ -84,6 +84,5 @@ const styles = StyleSheet.create({
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    // backgroundColor được set inline dựa trên theme
   },
 });

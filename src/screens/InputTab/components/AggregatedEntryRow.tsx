@@ -46,13 +46,6 @@ const AggregatedEntryRow: React.FC<AggregatedEntryRowProps> = ({
               Tổng: {totalQuantity.toLocaleString()}
             </Text>
           </View>
-          {/* {!disabled && ( // Icon đã bị comment, cập nhật màu nếu được sử dụng lại
-            <Ionicons
-              name={isExpanded ? 'chevron-up-outline' : 'chevron-down-outline'}
-              size={20}
-              color={theme.colors.textSecondary} // secondary -> textSecondary
-            />
-          )} */}
         </View>
       </TouchableOpacity>
 
@@ -74,56 +67,51 @@ const AggregatedEntryRow: React.FC<AggregatedEntryRowProps> = ({
 };
 
 const styles = StyleSheet.create({
-  container: {
-    // marginLeft: theme.spacing['level-7'], // xl -> level-7 (nếu dùng)
-  },
-  mainRowTouchable: {
-    // No specific style needed
-  },
+  container: {},
+  mainRowTouchable: {},
   mainRowContainer: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    paddingRight: theme.spacing['level-4'], // md -> level-4
-    paddingVertical: theme.spacing['level-2'], // sm -> level-2
-    backgroundColor: theme.colors.cardBackground, // Giữ nguyên
-    
+    paddingRight: theme.spacing['level-4'],
+    paddingVertical: theme.spacing['level-2'],
+    backgroundColor: theme.colors.cardBackground,
   },
   mainInfo: {
     flex: 1,
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginRight: theme.spacing['level-2'], // sm -> level-2
+    marginRight: theme.spacing['level-2'],
   },
   stageCodeText: {
-    fontSize: theme.typography['level-3'].fontSize, // bodySmall.fontSize -> level-3
-    fontWeight: theme.typography['level-3-bold'].fontWeight, // 'bold' -> level-3-bold
-    color: theme.colors.text, // Giữ nguyên
-    paddingLeft: theme.spacing['level-2'], // sm -> level-2
+    fontSize: theme.typography['level-3'].fontSize,
+    fontWeight: theme.typography['level-3-bold'].fontWeight,
+    color: theme.colors.text,
+    paddingLeft: theme.spacing['level-2'],
   },
   totalQuantityText: {
-    fontSize: theme.typography['level-3'].fontSize, // bodySmall.fontSize -> level-3
-    fontWeight: theme.typography['level-3-bold'].fontWeight, // 'bold' -> level-3-bold
-    color: theme.colors.text, // Giữ nguyên
+    fontSize: theme.typography['level-3'].fontSize,
+    fontWeight: theme.typography['level-3-bold'].fontWeight,
+    color: theme.colors.text,
   },
   detailsListContainer: {
     borderTopWidth: 1,
-    borderTopColor: theme.colors.borderColor, // Giữ nguyên
+    borderTopColor: theme.colors.borderColor,
   },
   detailHeaderContainer: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    paddingVertical: theme.spacing['level-1'], // xs -> level-1
-    paddingHorizontal: theme.spacing['level-2'], // sm -> level-2
-    backgroundColor: theme.colors.background1, // lightGrey -> background1
+    paddingVertical: theme.spacing['level-1'],
+    paddingHorizontal: theme.spacing['level-2'],
+    backgroundColor: theme.colors.background1,
     borderBottomWidth: 1,
-    borderBottomColor: theme.colors.borderColor, // Giữ nguyên
+    borderBottomColor: theme.colors.borderColor,
   },
   detailHeaderText: {
-    fontSize: theme.typography['level-2'].fontSize, // caption.fontSize -> level-2
-    fontWeight: theme.typography['level-2-bold'].fontWeight, // 'bold' -> level-2-bold
-    color: theme.colors.textSecondary, // Giữ nguyên
+    fontSize: theme.typography['level-2'].fontSize,
+    fontWeight: theme.typography['level-2-bold'].fontWeight,
+    color: theme.colors.textSecondary,
     textAlign: 'center',
   },
   columnPo: { flex: 2, textAlign: 'left' },
@@ -134,7 +122,7 @@ const styles = StyleSheet.create({
     opacity: 0.6,
   },
   disabledText: {
-    color: theme.colors.grey, // Giữ nguyên
+    color: theme.colors.grey,
   },
 });
 
