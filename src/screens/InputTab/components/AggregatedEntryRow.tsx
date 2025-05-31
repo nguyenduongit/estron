@@ -4,22 +4,30 @@ import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { theme } from '../../../theme';
 import IndividualEntryDetailRow from './IndividualEntryDetailRow';
+// Không cần import ProductionEntry trực tiếp ở đây nữa nếu ProductionItem được định nghĩa đầy đủ
+// import { ProductionEntry } from '../../../types/data';
 
+// Định nghĩa lại ProductionItem để khớp với cấu trúc dữ liệu được truyền từ DailyCard
+// (dữ liệu này có nguồn gốc từ DailyProductionData.entries)
 type ProductionItem = {
   id: string;
-  stageCode: string;
-  quantity: number;
-  workAmount?: number;
+  stageCode: string;        // Trường này chứa giá trị mã sản phẩm cho mỗi item con
+  quantity?: number | null;  // Khớp với IndividualEntryDetailRow và DailyProductionData
   po?: string | null;
   box?: string | null;
   batch?: string | null;
+  verified?: boolean | null; // Giữ lại trường này cho logic xác minh
+  workAmount?: number;       // Trường này có trong dữ liệu nguồn (DailyProductionData.entries)
+  // Không có trường 'product_code' ở đây vì dữ liệu truyền vào sử dụng 'stageCode'
 };
 
+
 interface AggregatedEntryRowProps {
-  stageCode: string;
+  stageCode: string; // Mã công đoạn chung cho cả hàng này
   totalQuantity: number;
-  items: ProductionItem[];
+  items: ProductionItem[]; // Mảng các mục con, mỗi mục có cấu trúc ProductionItem ở trên
   disabled?: boolean;
+  isDayFullyVerified?: boolean;
 }
 
 const AggregatedEntryRow: React.FC<AggregatedEntryRowProps> = ({
@@ -27,6 +35,7 @@ const AggregatedEntryRow: React.FC<AggregatedEntryRowProps> = ({
   totalQuantity,
   items,
   disabled,
+  isDayFullyVerified,
 }) => {
   const [isExpanded, setIsExpanded] = useState(false);
 
@@ -36,14 +45,18 @@ const AggregatedEntryRow: React.FC<AggregatedEntryRowProps> = ({
     }
   };
 
+  const iconName = isDayFullyVerified ? "checkmark-circle" : "remove-circle";
+  const iconColor = isDayFullyVerified ? theme.colors.success : theme.colors.warning;
+
   return (
     <View style={styles.container}>
       <TouchableOpacity onPress={toggleExpansion} style={styles.mainRowTouchable} disabled={disabled}>
         <View style={[styles.mainRowContainer, disabled && styles.disabledVisual]}>
+          <Ionicons name={iconName} size={16} color={iconColor} style={styles.verificationIcon} />
           <View style={styles.mainInfo}>
             <Text style={[styles.stageCodeText, disabled && styles.disabledText]}>{stageCode}</Text>
             <Text style={[styles.totalQuantityText, disabled && styles.disabledText]}>
-              Tổng: {totalQuantity.toLocaleString()}
+               {totalQuantity.toLocaleString()} pcs
             </Text>
           </View>
         </View>
@@ -71,28 +84,28 @@ const styles = StyleSheet.create({
   mainRowTouchable: {},
   mainRowContainer: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
     alignItems: 'center',
+    paddingLeft: theme.spacing['level-6'],
     paddingRight: theme.spacing['level-4'],
     paddingVertical: theme.spacing['level-2'],
     backgroundColor: theme.colors.cardBackground,
+  },
+  verificationIcon: {
+    marginRight: theme.spacing['level-2'],
   },
   mainInfo: {
     flex: 1,
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginRight: theme.spacing['level-2'],
   },
   stageCodeText: {
-    fontSize: theme.typography['level-3'].fontSize,
-    fontWeight: theme.typography['level-3-bold'].fontWeight,
+    fontSize: theme.typography.fontSize['level-2'],
+    fontWeight: theme.typography.fontWeight['bold'],
     color: theme.colors.text,
-    paddingLeft: theme.spacing['level-2'],
   },
   totalQuantityText: {
-    fontSize: theme.typography['level-3'].fontSize,
-    fontWeight: theme.typography['level-3-bold'].fontWeight,
+    fontSize: theme.typography.fontSize['level-2'],
     color: theme.colors.text,
   },
   detailsListContainer: {
@@ -109,8 +122,8 @@ const styles = StyleSheet.create({
     borderBottomColor: theme.colors.borderColor,
   },
   detailHeaderText: {
-    fontSize: theme.typography['level-2'].fontSize,
-    fontWeight: theme.typography['level-2-bold'].fontWeight,
+    fontSize: theme.typography.fontSize['level-2'],
+    fontWeight: theme.typography.fontWeight['bold'],
     color: theme.colors.textSecondary,
     textAlign: 'center',
   },

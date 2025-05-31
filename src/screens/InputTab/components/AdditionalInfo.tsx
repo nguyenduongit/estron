@@ -245,7 +245,7 @@ const styles = StyleSheet.create({
     paddingVertical: theme.spacing['level-2'], // sm -> level-2
   },
   additionalLabel: {
-    fontSize: theme.typography['level-3'].fontSize, // bodySmall.fontSize -> level-3
+    fontSize: theme.typography.fontSize['level-3'], // bodySmall.fontSize -> level-3
     color: theme.colors.textSecondary, // Giữ nguyên
     marginRight: theme.spacing['level-2'], // sm -> level-2
     flex: 0.3, // Giữ nguyên
@@ -275,7 +275,7 @@ const styles = StyleSheet.create({
     borderColor: theme.colors.danger, // Giữ nguyên
   },
   hourOptionText: {
-    fontSize: theme.typography['level-2'].fontSize, // caption.fontSize -> level-2
+    fontSize: theme.typography.fontSize['level-2'], // caption.fontSize -> level-2
     color: theme.colors.primary, // Giữ nguyên
   },
   hourOptionSelectedText: {
@@ -295,12 +295,12 @@ const styles = StyleSheet.create({
   meetingInput: {
     flex: 1, // Giữ nguyên
     height: 30, // Giữ nguyên
-    fontSize: theme.typography['level-3'].fontSize, // bodySmall.fontSize -> level-3
+    fontSize: theme.typography.fontSize['level-3'], // bodySmall.fontSize -> level-3
     paddingLeft: theme.spacing['level-2'], // sm -> level-2
     color: theme.colors.text, // Giữ nguyên
   },
   unitLabel: {
-    fontSize: theme.typography['level-3'].fontSize, // bodySmall.fontSize -> level-3
+    fontSize: theme.typography.fontSize['level-3'], // bodySmall.fontSize -> level-3
     color: theme.colors.textSecondary, // Giữ nguyên
     paddingHorizontal: theme.spacing['level-2'], // sm -> level-2
   },

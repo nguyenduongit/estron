@@ -22,7 +22,7 @@
     "expo-clipboard": "^7.1.4",
     "expo-dev-client": "~5.1.8",
     "expo-linear-gradient": "~14.1.4",
-    "expo-pwa": "^0.0.127",
+    "expo-pwa": "^0.0.58",
     "expo-status-bar": "~2.2.3",
     "expo-system-ui": "~5.0.7",
     "react": "19.0.0",

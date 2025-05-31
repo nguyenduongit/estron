@@ -10,7 +10,7 @@ export interface ProductionEntry {
   id: string; // UUID, duy nhất cho mỗi lần nhập (từ Supabase)
   user_id?: string | null;
   product_code: string; // Mã công đoạn/sản phẩm, tham chiếu đến QuotaSetting.product_code
-  date: string; // Định dạng YYYY-MM-DD
+  date: string; // Định dạng yyyy-MM-DD
   po?: string | null; // Đổi thành string | null theo schema mới
   quantity?: number | null;
   quota_percentage?: number; // Mặc định là 100 trên DB
@@ -29,9 +29,10 @@ export interface DailyProductionData {
     stageCode: string; // product_code từ ProductionEntry
     quantity: number;
     workAmount?: number;
-    po?: string | null; // Đổi thành string | null
-    box?: string | null; // Đổi thành string | null
-    batch?: string | null; // Đổi thành string | null
+    po?: string | null;
+    box?: string | null;
+    batch?: string | null;
+    verified?: boolean | null; // <<< THÊM DÒNG NÀY
   }>;
   totalWorkForDay?: number;
 }

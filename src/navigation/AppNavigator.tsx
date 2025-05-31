@@ -20,7 +20,7 @@ const Tab = createBottomTabNavigator<BottomTabNavigatorParamList>();
 const commonStackScreenOptions = {
   headerStyle: { backgroundColor: theme.colors.primary }, // Giữ nguyên
   headerTintColor: theme.colors.textOnPrimary, // white -> textOnPrimary
-  headerTitleStyle: { fontWeight: 'bold' as 'bold' }, // Giữ nguyên
+  headerTitleStyle: { fontWeight: 'bold' as 'bold', fontSize: theme.typography.fontSize['level-3'] }, // Giữ nguyên
 };
 
 function InputStack() {
@@ -55,7 +55,7 @@ function InputStack() {
       <InputTabStack.Screen
         name="Settings"
         component={SettingScreen}
-        options={{ title: 'Cài Đặt Định Mức' }}
+        options={{ title: 'Danh Sách Sản Phẩm' }}
       />
     </InputTabStack.Navigator>
   );

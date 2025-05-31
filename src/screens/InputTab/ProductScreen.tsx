@@ -140,6 +140,7 @@ export default function ProductScreen() {
                 po: entry.po, //
                 box: entry.box, //
                 batch: entry.batch, //
+                verified: entry.verified, // <<< THÊM DÒNG NÀY
               };
             });
             totalWeeklyWorkAcc += totalDailyWork; //
@@ -312,28 +313,28 @@ const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: theme.colors.background2 }, 
   pagerView: { flex: 1, width: '100%' }, 
   fullFlex: { flex:1 }, 
-  centered: { flex: 1, justifyContent: 'center', alignItems: 'center', padding: theme.spacing['level-6'] }, // lg -> level-6
+  centered: { flex: 1, justifyContent: 'center', alignItems: 'center', padding: theme.spacing['level-6'] }, 
   emptyText: { 
-    fontSize: theme.typography['level-4'].fontSize, // body.fontSize -> level-4
+    fontSize: theme.typography.fontSize['level-4'], 
     color: theme.colors.textSecondary, 
     textAlign: 'center', 
-    marginBottom: theme.spacing['level-2'], // sm -> level-2
+    marginBottom: theme.spacing['level-2'], 
   }, 
   customModalHeader: { 
     alignItems: 'center', 
-    marginBottom: theme.spacing['level-6'], // lg -> level-6
-    paddingBottom: theme.spacing['level-4'], // md -> level-4
+    marginBottom: theme.spacing['level-6'], 
+    paddingBottom: theme.spacing['level-4'], 
     borderBottomWidth: 1, 
     borderBottomColor: theme.colors.borderColor, 
   }, 
   customModalTitle: { 
-    fontSize: theme.typography['level-7'].fontSize, // h2.fontSize (24) -> level-7 (24)
-    fontWeight: theme.typography['level-7-bold'].fontWeight, // h2.fontWeight -> level-7-bold
+    fontSize: theme.typography.fontSize['level-7'], 
+    fontWeight: theme.typography.fontWeight['bold'], 
     color: theme.colors.text, 
-    marginBottom: theme.spacing['level-1'], // xs -> level-1
+    marginBottom: theme.spacing['level-1'], 
   }, 
   customModalSubtitle: { 
-    fontSize: theme.typography['level-4'].fontSize, // body.fontSize -> level-4
+    fontSize: theme.typography.fontSize['level-4'], 
     color: theme.colors.textSecondary, 
   }, 
   productListGrid: { maxHeight: 400 }, 
@@ -342,31 +343,31 @@ const styles = StyleSheet.create({
     flexDirection: 'column', 
     alignItems: 'center', 
     justifyContent: 'center', 
-    margin: theme.spacing['level-2'], // sm -> level-2
-    paddingVertical: theme.spacing['level-6'], // lg -> level-6
-    paddingHorizontal: theme.spacing['level-2'], // sm -> level-2
-    backgroundColor: theme.colors.cardBackground, // white -> cardBackground
-    borderRadius: theme.borderRadius['level-7'], // lg -> level-7
+    margin: theme.spacing['level-2'], 
+    paddingVertical: theme.spacing['level-6'], 
+    paddingHorizontal: theme.spacing['level-2'], 
+    backgroundColor: theme.colors.cardBackground, 
+    borderRadius: theme.borderRadius['level-7'], 
     borderWidth: 1, 
     borderColor: theme.colors.primary, 
     minHeight: 100,  
   }, 
   productStageCodeGrid: { 
-    fontSize: theme.typography['level-5'].fontSize, // h4.fontSize -> level-5
-    fontWeight: theme.typography['level-5-bold'].fontWeight, // h4.fontWeight -> level-5-bold
+    fontSize: theme.typography.fontSize['level-5'], 
+    fontWeight: theme.typography.fontWeight['bold'], 
     color: theme.colors.text, 
     textAlign: 'center', 
-    marginBottom: theme.spacing['level-2'], // sm -> level-2
+    marginBottom: theme.spacing['level-2'], 
   }, 
   productDailyQuotaGrid: { 
-    fontSize: theme.typography['level-3'].fontSize, // bodySmall.fontSize -> level-3
+    fontSize: theme.typography.fontSize['level-3'], 
     color: theme.colors.textSecondary, 
     textAlign: 'center', 
   }, 
   emptyTextModal: { 
-    fontSize: theme.typography['level-4'].fontSize, // body.fontSize -> level-4
+    fontSize: theme.typography.fontSize['level-4'], 
     color: theme.colors.textSecondary, 
     textAlign: 'center', 
-    paddingVertical: theme.spacing['level-6'], // lg -> level-6
+    paddingVertical: theme.spacing['level-6'], 
   }, 
 });

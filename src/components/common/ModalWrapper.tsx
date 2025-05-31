@@ -112,8 +112,8 @@ const styles = StyleSheet.create({
     paddingBottom: theme.spacing['level-2'], // sm -> level-2
   },
   title: {
-    fontSize: theme.typography['level-6'].fontSize, // h3.fontSize (20) -> level-6 (20)
-    fontWeight: theme.typography['level-6-bold'].fontWeight, // h3.fontWeight ('bold') -> level-6-bold
+    fontSize: theme.typography.fontSize['level-6'], // h3.fontSize (20) -> level-6 (20)
+    fontWeight: theme.typography.fontWeight['bold'], // h3.fontWeight ('bold') -> level-6-bold
     color: theme.colors.text, // Giữ nguyên
   },
   closeButton: {

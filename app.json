@@ -32,7 +32,7 @@
         "short_name": "Estron",
         "name": "Estron Production",
         "start_url": ".",
-        "display": "standalone",          
+        "display": "standalone",
         "background_color": "#ffffff",
         "theme_color": "#ffffff",
         "orientation": "portrait",
@@ -49,6 +49,8 @@
       "eas": {
         "projectId": "5157767b-6f79-483b-b332-30708315f22b"
       }
-    }
-  }
+    },
+    "sdkVersion": "53.0.0"
+  },
+  "name": "estron-production"
 }

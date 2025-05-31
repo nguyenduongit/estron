@@ -43,8 +43,8 @@ const styles = StyleSheet.create({
     minHeight: 44,
   },
   text: {
-    fontSize: theme.typography['level-4'].fontSize, // button.fontSize (16) -> level-4 (16)
-    fontWeight: theme.typography['level-4-bold'].fontWeight, // button.fontWeight ('500') -> level-4-bold
+    fontSize: theme.typography.fontSize['level-4'], // button.fontSize (16) -> level-4 (16)
+    fontWeight: theme.typography.fontWeight['bold'], // button.fontWeight ('500') -> level-4-bold
   },
   primary: {
     backgroundColor: theme.colors.primary, // Giữ nguyên

@@ -82,17 +82,17 @@ const styles = StyleSheet.create({
     backgroundColor: theme.colors.background1, // lightGrey -> background1
   },
   weekName: {
-    fontSize: theme.typography['level-6'].fontSize, // h3.fontSize -> level-6
-    fontWeight: theme.typography['level-6-bold'].fontWeight, // h3.fontWeight -> level-6-bold
+    fontSize: theme.typography.fontSize['level-4'], // h3.fontSize -> level-6
+    fontWeight: theme.typography.fontWeight['bold'], // h3.fontWeight -> level-6-bold
     color: theme.colors.primary, // Giữ nguyên
   },
   weekDateRange: {
-    fontSize: theme.typography['level-2'].fontSize, // caption.fontSize -> level-2
+    fontSize: theme.typography.fontSize['level-2'], // caption.fontSize -> level-2
     color: theme.colors.textSecondary, // Giữ nguyên
   },
   totalWeeklyWorkText: {
-    fontSize: theme.typography['level-4'].fontSize, // body.fontSize -> level-4
-    fontWeight: theme.typography['level-4-bold'].fontWeight, // 'bold' -> level-4-bold
+    fontSize: theme.typography.fontSize['level-3'], // body.fontSize -> level-4
+    fontWeight: theme.typography.fontWeight['bold'], // 'bold' -> level-4-bold
     color: theme.colors.success, // Giữ nguyên
   },
 });

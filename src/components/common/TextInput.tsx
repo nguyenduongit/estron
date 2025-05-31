@@ -34,7 +34,7 @@ const styles = StyleSheet.create({
     marginBottom: theme.spacing['level-4'], // md -> level-4
   },
   label: {
-    fontSize: theme.typography['level-3'].fontSize, // bodySmall.fontSize (14) -> level-3 (14)
+    fontSize: theme.typography.fontSize['level-3'], // bodySmall.fontSize (14) -> level-3 (14)
     color: theme.colors.textSecondary, // Giữ nguyên, textSecondary phù hợp cho label
     marginBottom: theme.spacing['level-1'], // xs -> level-1
   },
@@ -44,7 +44,7 @@ const styles = StyleSheet.create({
     borderRadius: theme.borderRadius['level-2'], // sm -> level-2
     paddingHorizontal: theme.spacing['level-2'], // sm -> level-2
     paddingVertical: theme.spacing['level-2'], // sm -> level-2
-    fontSize: theme.typography['level-4'].fontSize, // body.fontSize (16) -> level-4 (16)
+    fontSize: theme.typography.fontSize['level-4'], // body.fontSize (16) -> level-4 (16)
     color: theme.colors.text, // Giữ nguyên, text là màu sáng cho nền tối
     backgroundColor: theme.colors.cardBackground, // white -> cardBackground (màu nền tối cho input)
     minHeight: 44,
@@ -53,7 +53,7 @@ const styles = StyleSheet.create({
     borderColor: theme.colors.danger, // Giữ nguyên
   },
   errorText: {
-    fontSize: theme.typography['level-2'].fontSize, // caption.fontSize (12) -> level-2 (12)
+    fontSize: theme.typography.fontSize['level-2'], // caption.fontSize (12) -> level-2 (12)
     color: theme.colors.danger, // Giữ nguyên
     marginTop: theme.spacing['level-1'], // xs -> level-1
   },

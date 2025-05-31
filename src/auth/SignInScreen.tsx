@@ -152,8 +152,8 @@ const styles = StyleSheet.create({
     marginBottom: theme.spacing['level-7'], // xl -> level-7
   },
   title: {
-    fontSize: theme.typography['level-8'].fontSize, // h1.fontSize (32) -> level-8 (28)
-    fontWeight: theme.typography['level-8-bold'].fontWeight, // h1.fontWeight -> level-8-bold
+    fontSize: theme.typography.fontSize['level-8'], // h1.fontSize (32) -> level-8 (28)
+    fontWeight: theme.typography.fontWeight['bold'], // h1.fontWeight -> level-8-bold
     color: theme.colors.primary, // Giữ nguyên
     marginBottom: theme.spacing['level-7'], // xl -> level-7
   },
@@ -165,7 +165,7 @@ const styles = StyleSheet.create({
     marginBottom: theme.spacing['level-4'], // md -> level-4
   },
   label: {
-    fontSize: theme.typography['level-3'].fontSize, // bodySmall.fontSize -> level-3
+    fontSize: theme.typography.fontSize['level-3'], // bodySmall.fontSize -> level-3
     color: theme.colors.textSecondary, // Giữ nguyên
     marginBottom: theme.spacing['level-1'], // xs -> level-1
     // Giữ nguyên fontWeight mặc định (normal) từ level-3
@@ -177,7 +177,7 @@ const styles = StyleSheet.create({
     borderColor: theme.colors.borderColor, // Giữ nguyên
     borderRadius: theme.borderRadius['level-4'], // spacing.sm (8) -> borderRadius.level-4 (8)
     paddingHorizontal: theme.spacing['level-4'], // md -> level-4
-    fontSize: theme.typography['level-4'].fontSize, // body.fontSize -> level-4
+    fontSize: theme.typography.fontSize['level-4'], // body.fontSize -> level-4
     color: theme.colors.text, // Giữ nguyên
     width: '100%',
     // Giữ nguyên fontWeight mặc định (normal) từ level-4
@@ -195,7 +195,7 @@ const styles = StyleSheet.create({
     flex: 1,
     height: 48,
     paddingHorizontal: theme.spacing['level-4'], // md -> level-4
-    fontSize: theme.typography['level-4'].fontSize, // body.fontSize -> level-4
+    fontSize: theme.typography.fontSize['level-4'], // body.fontSize -> level-4
     color: theme.colors.text, // Giữ nguyên
     borderWidth: 0,
     // Giữ nguyên fontWeight mặc định (normal) từ level-4
@@ -204,7 +204,7 @@ const styles = StyleSheet.create({
     padding: theme.spacing['level-4'], // md -> level-4
   },
   eyeButtonText: {
-    fontSize: theme.typography['level-2'].fontSize, // caption.fontSize -> level-2
+    fontSize: theme.typography.fontSize['level-2'], // caption.fontSize -> level-2
     color: theme.colors.primary, // Giữ nguyên
     // Giữ nguyên fontWeight mặc định (normal) từ level-2
   },
@@ -213,7 +213,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   linkText: {
-    fontSize: theme.typography['level-3'].fontSize, // bodySmall.fontSize -> level-3
+    fontSize: theme.typography.fontSize['level-3'], // bodySmall.fontSize -> level-3
     color: theme.colors.primary, // Giữ nguyên
     // Giữ nguyên fontWeight mặc định (normal) từ level-3
   },

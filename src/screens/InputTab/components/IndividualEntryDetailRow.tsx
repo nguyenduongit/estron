@@ -6,7 +6,7 @@ import { theme } from '../../../theme';
 interface IndividualEntryDetailRowProps {
   item: {
     id: string;
-    quantity: number;
+    quantity?: number | null; // Allow quantity to be number, null, or undefined
     po?: string | null;
     box?: string | null;
     batch?: string | null;
@@ -15,12 +15,17 @@ interface IndividualEntryDetailRowProps {
 }
 
 const IndividualEntryDetailRow: React.FC<IndividualEntryDetailRowProps> = ({ item, disabled }) => {
+  // Handle potential null/undefined quantity by defaulting to 0 for display
+  const displayQuantity = item.quantity ?? 0;
+
   return (
     <View style={styles.detailRowContainer}>
       <Text style={[styles.detailText, styles.columnPo, disabled && styles.disabledText]}>{item.po || '-'}</Text>
       <Text style={[styles.detailText, styles.columnBox, disabled && styles.disabledText]}>{item.box || '-'}</Text>
       <Text style={[styles.detailText, styles.columnBatch, disabled && styles.disabledText]}>{item.batch || '-'}</Text>
-      <Text style={[styles.detailText, styles.columnQuantity, disabled && styles.disabledText]}>{item.quantity.toLocaleString()}</Text>
+      <Text style={[styles.detailText, styles.columnQuantity, disabled && styles.disabledText]}>
+        {displayQuantity.toLocaleString()}
+      </Text>
     </View>
   );
 };
@@ -34,7 +39,7 @@ const styles = StyleSheet.create({
     backgroundColor: theme.colors.cardBackground, // white -> cardBackground
   },
   detailText: {
-    fontSize: theme.typography['level-2'].fontSize, // caption.fontSize -> level-2
+    fontSize: theme.typography.fontSize['level-2'], // caption.fontSize -> level-2
     color: theme.colors.textSecondary, // Giữ nguyên
     textAlign: 'center',
   },

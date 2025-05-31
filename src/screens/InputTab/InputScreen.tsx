@@ -200,14 +200,14 @@ const styles = StyleSheet.create({
     marginBottom: theme.spacing['level-6'], // lg -> level-6
   },
   datePickerText: {
-    fontSize: theme.typography['level-4'].fontSize, // body.fontSize -> level-4
+    fontSize: theme.typography.fontSize['level-4'], // body.fontSize -> level-4
     color: theme.colors.text, // Giữ nguyên
   },
   icon: {
     marginRight: theme.spacing['level-2'], // sm -> level-2
   },
   errorText: {
-    fontSize: theme.typography['level-2'].fontSize, // caption.fontSize -> level-2
+    fontSize: theme.typography.fontSize['level-2'], // caption.fontSize -> level-2
     color: theme.colors.danger, // Giữ nguyên
     marginTop: theme.spacing['level-1'], // xs -> level-1
     marginBottom: theme.spacing['level-2'], // sm -> level-2 (Thêm vào nếu cần)

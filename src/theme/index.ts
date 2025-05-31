@@ -74,47 +74,28 @@ export const theme = {
     'level-7': 32,
     'level-8': 48,
   },
+
   typography: {
-    // Level 1
-    'level-1': { fontSize: 10, fontWeight: 'normal' as 'normal', fontStyle: 'normal' as 'normal' },
-    'level-1-bold': { fontSize: 10, fontWeight: 'bold' as 'bold', fontStyle: 'normal' as 'normal' },
-    'level-1-italic': { fontSize: 10, fontWeight: 'normal' as 'normal', fontStyle: 'italic' as 'italic' },
-
-    // Level 2
-    'level-2': { fontSize: 12, fontWeight: 'normal' as 'normal', fontStyle: 'normal' as 'normal' },
-    'level-2-bold': { fontSize: 12, fontWeight: 'bold' as 'bold', fontStyle: 'normal' as 'normal' },
-    'level-2-italic': { fontSize: 12, fontWeight: 'normal' as 'normal', fontStyle: 'italic' as 'italic' },
-
-    // Level 3
-    'level-3': { fontSize: 14, fontWeight: 'normal' as 'normal', fontStyle: 'normal' as 'normal' }, // Common body text
-    'level-3-bold': { fontSize: 14, fontWeight: 'bold' as 'bold', fontStyle: 'normal' as 'normal' },
-    'level-3-italic': { fontSize: 14, fontWeight: 'normal' as 'normal', fontStyle: 'italic' as 'italic' },
-
-    // Level 4
-    'level-4': { fontSize: 16, fontWeight: 'normal' as 'normal', fontStyle: 'normal' as 'normal' }, // Common for inputs, larger body
-    'level-4-bold': { fontSize: 16, fontWeight: 'bold' as 'bold', fontStyle: 'normal' as 'normal' },
-    'level-4-italic': { fontSize: 16, fontWeight: 'normal' as 'normal', fontStyle: 'italic' as 'italic' },
-
-    // Level 5
-    'level-5': { fontSize: 18, fontWeight: 'normal' as 'normal', fontStyle: 'normal' as 'normal' }, // Subheadings
-    'level-5-bold': { fontSize: 18, fontWeight: 'bold' as 'bold', fontStyle: 'normal' as 'normal' },
-    'level-5-italic': { fontSize: 18, fontWeight: 'normal' as 'normal', fontStyle: 'italic' as 'italic' },
-
-    // Level 6
-    'level-6': { fontSize: 20, fontWeight: 'normal' as 'normal', fontStyle: 'normal' as 'normal' }, // Headings
-    'level-6-bold': { fontSize: 20, fontWeight: 'bold' as 'bold', fontStyle: 'normal' as 'normal' },
-    'level-6-italic': { fontSize: 20, fontWeight: 'normal' as 'normal', fontStyle: 'italic' as 'italic' },
-
-    // Level 7
-    'level-7': { fontSize: 24, fontWeight: 'normal' as 'normal', fontStyle: 'normal' as 'normal' }, // Larger headings
-    'level-7-bold': { fontSize: 24, fontWeight: 'bold' as 'bold', fontStyle: 'normal' as 'normal' },
-    'level-7-italic': { fontSize: 24, fontWeight: 'normal' as 'normal', fontStyle: 'italic' as 'italic' },
-
-    // Level 8
-    'level-8': { fontSize: 28, fontWeight: 'normal' as 'normal', fontStyle: 'normal' as 'normal' }, // Page titles
-    'level-8-bold': { fontSize: 28, fontWeight: 'bold' as 'bold', fontStyle: 'normal' as 'normal' },
-    'level-8-italic': { fontSize: 28, fontWeight: 'normal' as 'normal', fontStyle: 'italic' as 'italic' },
+    fontSize: {
+      'level-1': 10,
+      'level-2': 12,
+      'level-3': 14, // Common body text
+      'level-4': 16, // Common for inputs, larger body
+      'level-5': 18, // Subheadings
+      'level-6': 20, // Headings
+      'level-7': 24, // Larger headings
+      'level-8': 28, // Page titles
+    },
+    fontWeight: {
+      normal: 'normal' as 'normal',
+      bold: 'bold' as 'bold',
+    },
+    fontStyle: {
+      normal: 'normal' as 'normal',
+      italic: 'italic' as 'italic',
+    },
   },
+
   borderRadius: {
     'level-1': 2,
     'level-2': 4,  // Common for small elements

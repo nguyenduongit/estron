@@ -252,33 +252,33 @@ const styles = StyleSheet.create({
   contentContainer: { padding: theme.spacing['level-4'], flexGrow: 1, }, // md -> level-4
   centered: { flex: 1, justifyContent: 'center', alignItems: 'center', padding: theme.spacing['level-6'], }, // lg -> level-6
   centeredFullHeight: { alignItems: 'center', justifyContent: 'center', padding: theme.spacing['level-6'], minHeight: 200, }, // lg -> level-6
-  loadingText: { marginTop: theme.spacing['level-4'], fontSize: theme.typography['level-4'].fontSize, color: theme.colors.textSecondary, }, // md -> level-4, body.fontSize -> level-4
-  errorText: { marginTop: theme.spacing['level-4'], fontSize: theme.typography['level-4'].fontSize, color: theme.colors.danger, textAlign: 'center', }, // md -> level-4, body.fontSize -> level-4
+  loadingText: { marginTop: theme.spacing['level-4'], fontSize: theme.typography.fontSize['level-4'], color: theme.colors.textSecondary, }, // md -> level-4, body.fontSize -> level-4
+  errorText: { marginTop: theme.spacing['level-4'], fontSize: theme.typography.fontSize['level-4'], color: theme.colors.danger, textAlign: 'center', }, // md -> level-4, body.fontSize -> level-4
   rowContainer: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: theme.spacing['level-4'], }, // md -> level-4
   chartBlockBase: { backgroundColor: theme.colors.cardBackground, borderRadius: theme.borderRadius['level-7'], padding: theme.spacing['level-2'], alignItems: 'center', justifyContent: 'space-around', ...theme.shadow.md, }, // lg -> level-7, sm -> level-2
   chartCenterLabel: { justifyContent: 'center', alignItems: 'center', },
   chartValueTextMain: { fontWeight: 'bold', color: theme.colors.text, }, // Giữ nguyên
   chartValueTextUnit: { color: theme.colors.textSecondary, marginTop: -theme.spacing['level-1'] / 2, }, // xs -> level-1
-  chartTitleText: { fontSize: theme.typography['level-3'].fontSize * 0.9, fontWeight: '600', color: theme.colors.text, textAlign: 'center', marginTop: theme.spacing['level-1'], }, // bodySmall.fontSize -> level-3, xs -> level-1
-  chartSubText: { fontSize: theme.typography['level-2'].fontSize * 0.9, color: theme.colors.textSecondary, textAlign: 'center', }, // caption.fontSize -> level-2
+  chartTitleText: { fontSize: theme.typography.fontSize['level-3'] * 0.9, fontWeight: '600', color: theme.colors.text, textAlign: 'center', marginTop: theme.spacing['level-1'], }, // bodySmall.fontSize -> level-3, xs -> level-1
+  chartSubText: { fontSize: theme.typography.fontSize['level-2'] * 0.9, color: theme.colors.textSecondary, textAlign: 'center', }, // caption.fontSize -> level-2
   smallBlockBase: { backgroundColor: theme.colors.cardBackground, borderRadius: theme.borderRadius['level-7'], padding: theme.spacing['level-1'], alignItems: 'center', justifyContent: 'center', ...theme.shadow.sm, }, // lg -> level-7, xs -> level-1
   smallBlockIcon: { marginBottom: theme.spacing['level-1'] / 2, }, // xs -> level-1
   smallBlockValue: { fontWeight: 'bold', color: theme.colors.text, textAlign: 'center', },
-  smallBlockUnit: { fontSize: theme.typography['level-2'].fontSize * 0.9, fontWeight: 'normal', color: theme.colors.textSecondary, }, // caption.fontSize -> level-2
-  smallBlockLabel: { fontSize: theme.typography['level-2'].fontSize * 0.85, color: theme.colors.textSecondary, textAlign: 'center', marginTop: theme.spacing['level-1'] / 2, }, // caption.fontSize -> level-2, xs -> level-1
+  smallBlockUnit: { fontSize: theme.typography.fontSize['level-2'] * 0.9, fontWeight: 'normal', color: theme.colors.textSecondary, }, // caption.fontSize -> level-2
+  smallBlockLabel: { fontSize: theme.typography.fontSize['level-2'] * 0.85, color: theme.colors.textSecondary, textAlign: 'center', marginTop: theme.spacing['level-1'] / 2, }, // caption.fontSize -> level-2, xs -> level-1
   authorModalContainer: { alignItems: 'center', paddingHorizontal: theme.spacing['level-2'], }, // sm -> level-2
   authorModalHeader: { width: '100%', flexDirection: 'row', justifyContent: 'center', alignItems: 'center', marginBottom: theme.spacing['level-6'], paddingBottom: theme.spacing['level-4'], borderBottomWidth: 1, borderBottomColor: theme.colors.borderColor, position: 'relative', }, // lg -> level-6, md -> level-4
-  authorModalTitle: { fontSize: theme.typography['level-6'].fontSize, fontWeight: theme.typography['level-6-bold'].fontWeight, color: theme.colors.text, }, // h3 -> level-6
+  authorModalTitle: { fontSize: theme.typography.fontSize['level-6'], fontWeight: theme.typography.fontWeight['bold'], color: theme.colors.text, }, // h3 -> level-6
   customCloseButton: { position: 'absolute', right: -theme.spacing['level-2'], top: -theme.spacing['level-2'], padding: theme.spacing['level-1'], }, // sm -> level-2, xs -> level-1; color for Ionicons updated in render
-  authorText: { fontSize: theme.typography['level-4'].fontSize, color: theme.colors.textSecondary, marginBottom: theme.spacing['level-1'], }, // body.fontSize -> level-4, xs -> level-1
-  authorName: { fontSize: theme.typography['level-5'].fontSize, fontWeight: theme.typography['level-5-bold'].fontWeight, color: theme.colors.primary, marginBottom: theme.spacing['level-4'], }, // h4 -> level-5, md -> level-4
+  authorText: { fontSize: theme.typography.fontSize['level-4'], color: theme.colors.textSecondary, marginBottom: theme.spacing['level-1'], }, // body.fontSize -> level-4, xs -> level-1
+  authorName: { fontSize: theme.typography.fontSize['level-5'], fontWeight: theme.typography.fontWeight['bold'], color: theme.colors.primary, marginBottom: theme.spacing['level-4'], }, // h4 -> level-5, md -> level-4
   divider: { height: 1, backgroundColor: theme.colors.borderColor, width: '80%', marginVertical: theme.spacing['level-4'], }, // md -> level-4
-  donateTitle: { fontSize: theme.typography['level-5'].fontSize, fontWeight: theme.typography['level-5-bold'].fontWeight, color: theme.colors.text, marginBottom: theme.spacing['level-2'], }, // h4 -> level-5, sm -> level-2
-  donateText: { fontSize: theme.typography['level-3'].fontSize, color: theme.colors.textSecondary, textAlign: 'center', marginBottom: theme.spacing['level-2'], paddingHorizontal: theme.spacing['level-2'], }, // bodySmall.fontSize -> level-3, sm -> level-2
+  donateTitle: { fontSize: theme.typography.fontSize['level-5'], fontWeight: theme.typography.fontWeight['bold'], color: theme.colors.text, marginBottom: theme.spacing['level-2'], }, // h4 -> level-5, sm -> level-2
+  donateText: { fontSize: theme.typography.fontSize['level-3'], color: theme.colors.textSecondary, textAlign: 'center', marginBottom: theme.spacing['level-2'], paddingHorizontal: theme.spacing['level-2'], }, // bodySmall.fontSize -> level-3, sm -> level-2
   donateInfoRow: { flexDirection: 'row', alignItems: 'center', marginVertical: theme.spacing['level-1'], }, // xs -> level-1
-  donateBank: { fontSize: theme.typography['level-4'].fontSize, fontWeight: 'bold', color: theme.colors.success, marginBottom: theme.spacing['level-1'], }, // body.fontSize -> level-4, xs -> level-1
-  donateAccountLabel: { fontSize: theme.typography['level-3'].fontSize, color: theme.colors.textSecondary, marginRight: theme.spacing['level-1'], }, // bodySmall.fontSize -> level-3, xs -> level-1
-  donateAccountValue: { fontSize: theme.typography['level-4'].fontSize, color: theme.colors.text, fontWeight: '500', }, // body.fontSize -> level-4
+  donateBank: { fontSize: theme.typography.fontSize['level-4'], fontWeight: 'bold', color: theme.colors.success, marginBottom: theme.spacing['level-1'], }, // body.fontSize -> level-4, xs -> level-1
+  donateAccountLabel: { fontSize: theme.typography.fontSize['level-3'], color: theme.colors.textSecondary, marginRight: theme.spacing['level-1'], }, // bodySmall.fontSize -> level-3, xs -> level-1
+  donateAccountValue: { fontSize: theme.typography.fontSize['level-4'], color: theme.colors.text, fontWeight: '500', }, // body.fontSize -> level-4
   copyButton: { marginLeft: theme.spacing['level-4'], padding: theme.spacing['level-1'], }, // md -> level-4, xs -> level-1
   closeModalButton: { marginTop: theme.spacing['level-6'], width: '60%', } // lg -> level-6
 });

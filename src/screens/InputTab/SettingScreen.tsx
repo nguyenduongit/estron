@@ -89,7 +89,6 @@ export default function SettingScreen() {
     }
   }, [isFocused, userId, loadUserQuotas]);
 
-  // ++ ĐOẠN CODE ĐÃ ĐƯỢC DI CHUYỂN LÊN TRÊN ++
   // Khai báo handleSaveOrder trước khi nó được sử dụng trong useLayoutEffect
   const handleSaveOrder = useCallback(async () => {
     if (!userId) {
@@ -114,8 +113,6 @@ export default function SettingScreen() {
     setIsEditMode(false); 
     setIsLoading(false);
   }, [userId, userSelectedQuotas, isEditMode]);
-  // -- KẾT THÚC ĐOẠN CODE ĐÃ DI CHUYỂN --
-
 
   useLayoutEffect(() => {
     navigation.setOptions({
@@ -123,19 +120,19 @@ export default function SettingScreen() {
         <TouchableOpacity
           onPress={() => {
             if (isEditMode) {
-              handleSaveOrder(); // Lỗi 'used before its declaration' sẽ biến mất tại đây
+              handleSaveOrder(); 
             } else {
               setIsEditMode(true);
             }
           }}
-          style={{ marginRight: theme.spacing['level-4'], padding: theme.spacing['level-1'] }}
+          style={{ marginRight: theme.spacing['level-3'], padding: theme.spacing['level-1'] }}
         >
           <Text style={{ 
             color: theme.colors.textOnPrimary,
-            fontSize: theme.typography['level-4'].fontSize,
-            fontWeight: theme.typography['level-4-bold'].fontWeight
+            fontSize: theme.typography.fontSize['level-3'],
+            fontWeight: theme.typography.fontWeight['bold']
           }}>
-            {isEditMode ? 'Lưu Sắp Xếp' : 'Sửa Thứ Tự'}
+            {isEditMode ? 'Lưu' : 'Sửa'}
           </Text>
         </TouchableOpacity>
       ),
@@ -367,8 +364,8 @@ export default function SettingScreen() {
     <View style={styles.container}>
       {userSelectedQuotas.length === 0 && !isLoading ? (
         <View style={styles.centered}>
-            <Text style={styles.emptyText}>Chưa có định mức nào được chọn.</Text>
-            <Text style={styles.emptyText}>Nhấn "Thêm Định Mức" để bắt đầu.</Text>
+            <Text style={styles.emptyText}>Chưa có sản phẩm nào được thêm.</Text>
+            <Text style={styles.emptyText}>Nhấn "Thêm Sản Phẩm Mới" để bắt đầu.</Text>
         </View>
       ) : (
         <DraggableFlatList
@@ -390,7 +387,7 @@ export default function SettingScreen() {
 
       {!isEditMode && (
         <Button
-          title="Thêm Định Mức Mới"
+          title="Thêm Sản Phẩm Mới"
           onPress={handleOpenAddModal} 
           style={styles.addButton}
         />
@@ -401,14 +398,14 @@ export default function SettingScreen() {
         onClose={handleCloseAddModal} 
       >
         <View style={styles.customModalHeaderContainer}>
-          <Text style={styles.customModalHeaderText}>Thêm Định Mức</Text>
+          <Text style={styles.customModalHeaderText}>Thêm Sản Phẩm</Text>
         </View>
         <View style={styles.modalInnerContent}>
           <TextInput
-            label="Mã Sản Phẩm (Product Code)"
+            label="Mã Sản Phẩm"
             value={currentProductCodeInput}
             onChangeText={handleProductCodeChange}
-            placeholder="Ví dụ: 5.2KA, L001..."
+            placeholder="Ví dụ: 5.2"
             autoCapitalize="characters"
             maxLength={20}
             onSubmitEditing={Keyboard.dismiss} 
@@ -480,8 +477,8 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   customModalHeaderText: {
-    fontSize: theme.typography['level-6'].fontSize,
-    fontWeight: theme.typography['level-6-bold'].fontWeight,
+    fontSize: theme.typography.fontSize['level-4'],
+    fontWeight: theme.typography.fontWeight['bold'],
     color: theme.colors.text,
   },
   modalInnerContent: { 
@@ -494,7 +491,7 @@ const styles = StyleSheet.create({
     padding: theme.spacing['level-6'],
   },
   emptyText: { 
-    fontSize: theme.typography['level-4'].fontSize,
+    fontSize: theme.typography.fontSize['level-4'],
     color: theme.colors.textSecondary,
     textAlign: 'center',
     marginBottom: theme.spacing['level-2'],
@@ -523,12 +520,12 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   itemProductCode: { 
-    fontSize: theme.typography['level-5'].fontSize,
-    fontWeight: theme.typography['level-5-bold'].fontWeight,
+    fontSize: theme.typography.fontSize['level-5'],
+    fontWeight: theme.typography.fontWeight['bold'],
     color: theme.colors.primary, 
   },
   itemProductName: { 
-    fontSize: theme.typography['level-3'].fontSize,
+    fontSize: theme.typography.fontSize['level-3'],
     color: theme.colors.textSecondary,
     marginTop: theme.spacing['level-1'],
   },
@@ -557,7 +554,7 @@ const styles = StyleSheet.create({
     marginHorizontal: theme.spacing['level-2'],
   },
   productSearchMessage: { 
-    fontSize: theme.typography['level-3'].fontSize,
+    fontSize: theme.typography.fontSize['level-3'],
     textAlign: 'center',
     marginVertical: theme.spacing['level-2'],
     padding: theme.spacing['level-2'],
@@ -575,14 +572,14 @@ const styles = StyleSheet.create({
     padding: theme.spacing['level-2'], 
   },
   confirmDeleteTitle: { 
-    fontSize: theme.typography['level-6'].fontSize,
-    fontWeight: theme.typography['level-6-bold'].fontWeight,
+    fontSize: theme.typography.fontSize['level-6'],
+    fontWeight: theme.typography.fontWeight['bold'],
     color: theme.colors.text,
     marginBottom: theme.spacing['level-4'],
     textAlign: 'center',
   },
   confirmDeleteMessage: { 
-    fontSize: theme.typography['level-4'].fontSize,
+    fontSize: theme.typography.fontSize['level-4'],
     color: theme.colors.textSecondary,
     textAlign: 'center',
     marginBottom: theme.spacing['level-6'], 
@@ -595,12 +592,12 @@ const styles = StyleSheet.create({
     marginBottom: theme.spacing['level-6'],
   },
   detailText: { 
-    fontSize: theme.typography['level-3'].fontSize,
+    fontSize: theme.typography.fontSize['level-3'],
     color: theme.colors.text,
     marginBottom: theme.spacing['level-1'],
   },
   detailTextBold: { 
-    fontSize: theme.typography['level-3'].fontSize,
+    fontSize: theme.typography.fontSize['level-3'],
     color: theme.colors.text,
     fontWeight: 'bold',
     marginBottom: theme.spacing['level-1'],
