@@ -7,20 +7,19 @@ import IndividualEntryDetailRow from './IndividualEntryDetailRow';
 
 type ProductionItem = {
   id: string;
-  stageCode: string;        
-  quantity?: number | null;  
+  stageCode: string;
+  quantity?: number | null;
   po?: string | null;
   box?: string | null;
   batch?: string | null;
-  verified?: boolean | null; 
-  workAmount?: number;       
+  verified?: boolean | null;
+  workAmount?: number;
 };
 
-
 interface AggregatedEntryRowProps {
-  stageCode: string; 
+  stageCode: string;
   totalQuantity: number;
-  items: ProductionItem[]; 
+  items: ProductionItem[];
   disabled?: boolean;
   isDayFullyVerified?: boolean;
 }
@@ -59,12 +58,6 @@ const AggregatedEntryRow: React.FC<AggregatedEntryRowProps> = ({
 
       {isExpanded && !disabled && (
         <View style={styles.detailsListContainer}>
-          <View style={styles.detailHeaderContainer}>
-            <Text style={[styles.detailHeaderText, styles.columnPo]}>PO</Text>
-            <Text style={[styles.detailHeaderText, styles.columnBox]}>Hộp</Text>
-            <Text style={[styles.detailHeaderText, styles.columnBatch]}>Batch</Text>
-            <Text style={[styles.detailHeaderText, styles.columnQuantity]}>SL</Text>
-          </View>
           {items.map(item => (
             <IndividualEntryDetailRow key={item.id} item={item} disabled={disabled} />
           ))}
@@ -75,7 +68,10 @@ const AggregatedEntryRow: React.FC<AggregatedEntryRowProps> = ({
 };
 
 const styles = StyleSheet.create({
-  container: {},
+  container: {
+    backgroundColor: theme.colors.cardBackground, // Thay đổi màu nền nếu cần để phân biệt với AggregatedEntryRow
+   
+  },
   mainRowTouchable: {},
   mainRowContainer: {
     height: 36,
@@ -84,6 +80,7 @@ const styles = StyleSheet.create({
     paddingLeft: theme.spacing['level-6'],
     paddingRight: theme.spacing['level-4'],
     backgroundColor: theme.colors.cardBackground,
+   
   },
   verificationIcon: {
     marginRight: theme.spacing['level-2'],
@@ -104,29 +101,8 @@ const styles = StyleSheet.create({
     color: theme.colors.text,
   },
   detailsListContainer: {
-    borderTopWidth: 1,
-    borderTopColor: theme.colors.borderColor,
+   
   },
-  detailHeaderContainer: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    paddingVertical: theme.spacing['level-1'],
-    paddingHorizontal: theme.spacing['level-2'],
-    marginLeft: theme.spacing['level-8'],
-    backgroundColor: theme.colors.background1,
-    borderBottomWidth: 1,
-    borderBottomColor: theme.colors.borderColor,
-  },
-  detailHeaderText: {
-    fontSize: theme.typography.fontSize['level-2'],
-    fontWeight: theme.typography.fontWeight['bold'],
-    color: theme.colors.textSecondary,
-    textAlign: 'center',
-  },
-  columnPo: { flex: 3, textAlign: 'left' },
-  columnBox: { flex: 2, textAlign: 'center' },
-  columnBatch: { flex: 3, textAlign: 'center' },
-  columnQuantity: { flex: 2, textAlign: 'right' },
   disabledVisual: {
     opacity: 0.6,
   },
