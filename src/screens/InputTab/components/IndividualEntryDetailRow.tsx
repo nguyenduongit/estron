@@ -1,6 +1,7 @@
 // src/screens/InputTab/components/IndividualEntryDetailRow.tsx
 import React from 'react';
 import { View, Text, StyleSheet } from 'react-native';
+import Ionicons from '@expo/vector-icons/Ionicons'; // Import Ionicons
 import { theme } from '../../../theme';
 
 interface IndividualEntryDetailRowProps {
@@ -10,6 +11,7 @@ interface IndividualEntryDetailRowProps {
     po?: string | null;
     box?: string | null;
     batch?: string | null;
+    verified?: boolean | null; // Đã thêm
   };
   disabled?: boolean;
 }
@@ -17,8 +19,22 @@ interface IndividualEntryDetailRowProps {
 const IndividualEntryDetailRow: React.FC<IndividualEntryDetailRowProps> = ({ item, disabled }) => {
   const displayQuantity = item.quantity ?? 0;
 
+  // Xác định icon và màu sắc dựa trên item.verified
+  const iconName = item.verified === true ? "checkmark-circle-outline" : "remove-circle-outline";
+  const iconColor = item.verified === true ? theme.colors.success : theme.colors.warning;
+  // Nếu verified là null hoặc undefined, có thể chọn một icon/màu mặc định hoặc không hiển thị icon
+  const showIcon = item.verified !== null && item.verified !== undefined;
+
   return (
     <View style={[styles.detailRowContainer, disabled && styles.disabledVisual]}>
+      {/* Icon ở đầu dòng */}
+      {showIcon && (
+        <Ionicons name={iconName as any} size={14} color={iconColor} style={styles.verificationIcon} />
+      )}
+      {!showIcon && ( // Giữ chỗ nếu không có icon để layout không bị xô lệch
+        <View style={styles.iconPlaceholder} />
+      )}
+
       <View style={styles.infoItem_PO}>
         <Text style={styles.label}>PO: </Text>
         <Text style={[styles.value, disabled && styles.disabledText]}>{item.po || '-'}</Text>
@@ -33,7 +49,7 @@ const IndividualEntryDetailRow: React.FC<IndividualEntryDetailRowProps> = ({ ite
       </View>
       <View style={styles.infoItem_Quantity}>
         <Text style={styles.label}>SL: </Text>
-        <Text style={[styles.value, styles.quantityValue, disabled && styles.disabledText]}>
+        <Text style={[styles.value, disabled && styles.disabledText]}>
           {displayQuantity.toLocaleString()}
         </Text>
       </View>
@@ -43,60 +59,58 @@ const IndividualEntryDetailRow: React.FC<IndividualEntryDetailRowProps> = ({ ite
 
 const styles = StyleSheet.create({
   detailRowContainer: {
-    height:36,
+    height: 36,
     flexDirection: 'row',
     justifyContent: 'space-between',
-    alignItems: 'center', // Canh các item theo chiều dọc nếu label và value có chiều cao khác nhau
-    paddingVertical: theme.spacing['level-2'], // Tăng padding cho dễ nhìn
-    marginLeft: theme.spacing['level-8'], // Giữ khoảng cách với AggregatedEntryRow
-    backgroundColor: theme.colors.cardBackground, // Thay đổi màu nền nếu cần để phân biệt với AggregatedEntryRow
+    alignItems: 'center',
+    paddingVertical: theme.spacing['level-2'],
+    marginLeft:theme.spacing['level-8'], 
+    backgroundColor: theme.colors.cardBackground,
     borderTopColor: theme.colors.borderColor,
-    borderTopWidth: 1, // Thêm đường viền trên cùng để phân biệt các dòng
+    borderTopWidth: 1,
+  },
+  verificationIcon: {
+    marginRight: theme.spacing['level-2'], // Khoảng cách giữa icon và PO
+  },
+  iconPlaceholder: { // Giữ chỗ nếu không có icon
+    width: 18 + theme.spacing['level-2'], // Kích thước icon + marginRight
   },
   infoItem_PO: {
-    flex:2.7,
+    flex: 2.7,
     flexDirection: 'row',
     alignItems: 'center',
-    // marginRight: theme.spacing['level-3'], // Khoảng cách giữa các cặp label-value
   },
   infoItem_Box: {
-    flex:2,
+    flex: 2,
     flexDirection: 'row',
     alignItems: 'center',
-    // marginRight: theme.spacing['level-3'], // Khoảng cách giữa các cặp label-value
   },
   infoItem_Batch: {
-    flex:3,
+    flex: 3,
     flexDirection: 'row',
     alignItems: 'center',
-    // marginRight: theme.spacing['level-3'], // Khoảng cách giữa các cặp label-value
   },
   infoItem_Quantity: {
-    flex:2,
+    flex: 2,
     flexDirection: 'row',
     alignItems: 'center',
-    // marginRight: theme.spacing['level-3'], // Khoảng cách giữa các cặp label-value
   },
   label: {
-    fontSize: theme.typography.fontSize['level-2'],
+    fontSize: theme.typography.fontSize['level-1'],
     color: theme.colors.textSecondary,
   },
   value: {
-    fontSize: theme.typography.fontSize['level-2'],
-    color: theme.colors.text,
-    fontWeight: theme.typography.fontWeight['bold'], // Hoặc 'medium' nếu muốn đậm hơn
-  },
-  quantityValue: {
+    fontSize: theme.typography.fontSize['level-1'],
+    color: theme.colors.primary,
     fontWeight: theme.typography.fontWeight['bold'],
-    color: theme.colors.primary, // Hoặc một màu khác để nổi bật số lượng
   },
+
   disabledVisual: {
     opacity: 0.6,
   },
   disabledText: {
     color: theme.colors.grey,
   },
-  // Các style column cũ không còn cần thiết
 });
 
 export default IndividualEntryDetailRow;
