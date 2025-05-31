@@ -4,28 +4,23 @@ import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { theme } from '../../../theme';
 import IndividualEntryDetailRow from './IndividualEntryDetailRow';
-// Không cần import ProductionEntry trực tiếp ở đây nữa nếu ProductionItem được định nghĩa đầy đủ
-// import { ProductionEntry } from '../../../types/data';
 
-// Định nghĩa lại ProductionItem để khớp với cấu trúc dữ liệu được truyền từ DailyCard
-// (dữ liệu này có nguồn gốc từ DailyProductionData.entries)
 type ProductionItem = {
   id: string;
-  stageCode: string;        // Trường này chứa giá trị mã sản phẩm cho mỗi item con
-  quantity?: number | null;  // Khớp với IndividualEntryDetailRow và DailyProductionData
+  stageCode: string;        
+  quantity?: number | null;  
   po?: string | null;
   box?: string | null;
   batch?: string | null;
-  verified?: boolean | null; // Giữ lại trường này cho logic xác minh
-  workAmount?: number;       // Trường này có trong dữ liệu nguồn (DailyProductionData.entries)
-  // Không có trường 'product_code' ở đây vì dữ liệu truyền vào sử dụng 'stageCode'
+  verified?: boolean | null; 
+  workAmount?: number;       
 };
 
 
 interface AggregatedEntryRowProps {
-  stageCode: string; // Mã công đoạn chung cho cả hàng này
+  stageCode: string; 
   totalQuantity: number;
-  items: ProductionItem[]; // Mảng các mục con, mỗi mục có cấu trúc ProductionItem ở trên
+  items: ProductionItem[]; 
   disabled?: boolean;
   isDayFullyVerified?: boolean;
 }
@@ -83,11 +78,11 @@ const styles = StyleSheet.create({
   container: {},
   mainRowTouchable: {},
   mainRowContainer: {
+    height: 36,
     flexDirection: 'row',
     alignItems: 'center',
     paddingLeft: theme.spacing['level-6'],
     paddingRight: theme.spacing['level-4'],
-    paddingVertical: theme.spacing['level-2'],
     backgroundColor: theme.colors.cardBackground,
   },
   verificationIcon: {
@@ -117,6 +112,7 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     paddingVertical: theme.spacing['level-1'],
     paddingHorizontal: theme.spacing['level-2'],
+    marginLeft: theme.spacing['level-8'],
     backgroundColor: theme.colors.background1,
     borderBottomWidth: 1,
     borderBottomColor: theme.colors.borderColor,
@@ -127,9 +123,9 @@ const styles = StyleSheet.create({
     color: theme.colors.textSecondary,
     textAlign: 'center',
   },
-  columnPo: { flex: 2, textAlign: 'left' },
-  columnBox: { flex: 1, textAlign: 'center' },
-  columnBatch: { flex: 1, textAlign: 'center' },
+  columnPo: { flex: 3, textAlign: 'left' },
+  columnBox: { flex: 2, textAlign: 'center' },
+  columnBatch: { flex: 3, textAlign: 'center' },
   columnQuantity: { flex: 2, textAlign: 'right' },
   disabledVisual: {
     opacity: 0.6,

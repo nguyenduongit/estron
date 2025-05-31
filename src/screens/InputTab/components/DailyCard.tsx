@@ -98,7 +98,7 @@ const DailyCard: React.FC<DailyCardProps> = ({
         >
           <Ionicons
             name={isAdditionalInfoExpanded ? "chevron-up-outline" : "chevron-down-outline"}
-            size={24}
+            size={20}
             color={theme.colors.textSecondary}
           />
         </TouchableOpacity>
@@ -126,6 +126,7 @@ const styles = StyleSheet.create({
     borderColor: theme.colors.borderColor,
   },
   cardHeader: {
+    height: 36,
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
@@ -134,7 +135,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: theme.spacing['level-4'],
     borderBottomWidth: 1,
     borderBottomColor: theme.colors.borderColor,
-    backgroundColor: theme.colors.background1,
+    backgroundColor: theme.colors.background4,
   },
   cardDateText: {
     fontSize: theme.typography.fontSize['level-2'],
@@ -158,21 +159,19 @@ const styles = StyleSheet.create({
   divider: {
     height: 1,
     backgroundColor: theme.colors.borderColor,
-    marginLeft: theme.spacing['level-7'], 
   },
   footerActionContainer: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingVertical: theme.spacing['level-1'],
     paddingHorizontal: theme.spacing['level-4'],
     borderTopWidth: 1,
     borderTopColor: theme.colors.borderColor,
   },
   addProductionButton: {
+    height: 36,
     flexDirection: 'row',
     alignItems: 'center',
-    paddingVertical: theme.spacing['level-1'],
   },
   addProductionButtonText: {
     marginLeft: theme.spacing['level-1'],
@@ -181,7 +180,9 @@ const styles = StyleSheet.create({
     fontWeight: theme.typography.fontWeight['bold'],
   },
   expandButton: {
-    padding: theme.spacing['level-2'],
+    height: 36,
+    justifyContent: 'center',
+    paddingLeft: theme.spacing['level-8'],
   },
   disabledButton: {
     opacity: 0.7,

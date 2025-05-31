@@ -36,16 +36,17 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     paddingVertical: theme.spacing['level-1'], // xs -> level-1
     paddingHorizontal: theme.spacing['level-2'], // sm -> level-2
-    backgroundColor: theme.colors.cardBackground, // white -> cardBackground
+    marginLeft: theme.spacing['level-8'],
+    backgroundColor: theme.colors.white, // white -> cardBackground
   },
   detailText: {
     fontSize: theme.typography.fontSize['level-2'], // caption.fontSize -> level-2
     color: theme.colors.textSecondary, // Giữ nguyên
     textAlign: 'center',
   },
-  columnPo: { flex: 2, textAlign: 'left' },
-  columnBox: { flex: 1, textAlign: 'center' },
-  columnBatch: { flex: 1, textAlign: 'center' },
+  columnPo: { flex: 3, textAlign: 'left' },
+  columnBox: { flex: 2, textAlign: 'center' },
+  columnBatch: { flex: 3, textAlign: 'center' },
   columnQuantity: { flex: 2, textAlign: 'right', fontWeight: 'bold' }, // Giữ nguyên fontWeight
   disabledText: {
     color: theme.colors.grey, // Giữ nguyên

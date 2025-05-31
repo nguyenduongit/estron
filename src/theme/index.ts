@@ -109,7 +109,7 @@ export const theme = {
   },
   shadow: { // Shadows might need adjustment for a dark theme (e.g., using lighter glows or no shadow)
     sm: {
-      shadowColor: palette.black, // On a dark theme, shadows are subtle or might be light.
+      shadowColor: palette.white, // On a dark theme, shadows are subtle or might be light.
       shadowOffset: { width: 0, height: 1 },
       shadowOpacity: 0.1, // Reduced opacity for dark themes
       shadowRadius: 2.00,
