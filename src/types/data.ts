@@ -35,13 +35,17 @@ export interface DailyProductionData {
     verified?: boolean | null; // <<< THÊM DÒNG NÀY
   }>;
   totalWorkForDay?: number;
+  supplementaryData?: DailySupplementaryData | null;
 }
 
 export interface DailySupplementaryData {
-  date: string;
-  leaveHours?: number | null;
-  overtimeHours?: number | null;
-  meetingMinutes?: number | null;
+  date: string; //
+  leaveHours?: number | null; //
+  overtimeHours?: number | null; //
+  meetingMinutes?: number | null; //
+   leaveVerified: boolean;
+  overtimeVerified: boolean;
+  meetingVerified: boolean;
 }
 
 export interface QuotaSetting {

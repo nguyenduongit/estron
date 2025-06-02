@@ -1,10 +1,10 @@
 // src/screens/InputTab/components/WeeklyPage.tsx
 import React from 'react';
 import { View, Text, StyleSheet, ScrollView } from 'react-native';
-import { theme } from '../../../theme';
-import { DailyProductionData } from '../../../types/data';
-import { EstronWeekPeriod, formatDate } from '../../../utils/dateUtils';
-import DailyCard from './DailyCard';
+import { theme } from '../../../theme'; 
+import { DailyProductionData, ProductionEntry } from '../../../types/data'; 
+import { EstronWeekPeriod, formatDate } from '../../../utils/dateUtils'; 
+import DailyCard from './DailyCard'; 
 
 interface ProcessedWeekData {
   weekInfo: EstronWeekPeriod;
@@ -17,14 +17,10 @@ interface WeeklyPageProps {
   weekData: ProcessedWeekData;
   quotasExist: boolean;
   onAddProduction: (date: string) => void;
+  onEditEntry: (entry: ProductionEntry) => void;
 }
 
-const WeeklyPage: React.FC<WeeklyPageProps> = ({
-  userId,
-  weekData,
-  quotasExist,
-  onAddProduction,
-}) => {
+const WeeklyPage: React.FC<WeeklyPageProps> = ({ userId, weekData, quotasExist, onAddProduction, onEditEntry }) => {
   return (
     <View style={styles.pageStyle}>
       <View style={styles.weekHeader}>
@@ -35,30 +31,35 @@ const WeeklyPage: React.FC<WeeklyPageProps> = ({
           </Text>
         </View>
         {quotasExist && (
-          <Text style={styles.totalWeeklyWorkText}>
-            Tổng công tuần: {weekData.totalWeeklyWork != null ? weekData.totalWeeklyWork.toLocaleString() : '0'}
-          </Text>
+          <View style={styles.totalWeeklyWorkContainer}>
+            <Text style={styles.totalWeeklyWorkLabel}>Tổng công tuần: </Text>
+            <Text style={styles.totalWeeklyWorkValue}>
+              {weekData.totalWeeklyWork != null ? weekData.totalWeeklyWork.toLocaleString() : '0'}
+            </Text>
+          </View>
         )}
       </View>
-      <ScrollView 
-        showsVerticalScrollIndicator={false} 
-        style={{ flex: 1 }} 
-        contentContainerStyle={{ 
-          paddingHorizontal: theme.spacing['level-2'], // sm -> level-2
-          paddingBottom: theme.spacing['level-8'] // Thêm padding bottom cho scrollview để nội dung không bị che khuất bởi tabbar/UI khác
+      <ScrollView
+        showsVerticalScrollIndicator={false}
+        style={{ flex: 1 }}
+        contentContainerStyle={{
+          paddingHorizontal: theme.spacing['level-2'],
+          paddingBottom: theme.spacing['level-8'],
         }}
       >
-        {weekData.dailyData.map(day => (
-          <DailyCard
-            userId={userId}
-            key={day.date}
-            dailyInfo={day}
-            weekHasData={quotasExist}
-            onAddProduction={onAddProduction}
-          />
-        ))}
-        {/* View đệm cũ height: 80 có thể được thay bằng paddingBottom cho contentContainerStyle */}
-        {/* <View style={{ height: 80 }} /> */}
+        {weekData.dailyData
+          .slice()
+          .reverse()
+          .map(day => (
+            <DailyCard
+              userId={userId}
+              key={day.date}
+              dailyInfo={day}
+              weekHasData={quotasExist}
+              onAddProduction={onAddProduction}
+              onEditEntry={onEditEntry}
+            />
+          ))}
       </ScrollView>
     </View>
   );
@@ -67,33 +68,40 @@ const WeeklyPage: React.FC<WeeklyPageProps> = ({
 const styles = StyleSheet.create({
   pageStyle: {
     flex: 1,
-    paddingHorizontal: theme.spacing['level-2'], // sm -> level-2
-    // backgroundColor: theme.colors.background2 // Nền chính của page nếu muốn tách biệt với ProductScreen (thường là không cần nếu ProductScreen đã có nền)
+    paddingHorizontal: theme.spacing['level-2'],
   },
   weekHeader: {
-    paddingVertical: theme.spacing['level-4'], // md -> level-4
-    paddingHorizontal: theme.spacing['level-2'], // sm -> level-2
-    marginHorizontal: -theme.spacing['level-2'], // sm -> level-2 (để full-width border)
+    paddingVertical: theme.spacing['level-4'],
+    paddingHorizontal: theme.spacing['level-2'],
+    marginHorizontal: -theme.spacing['level-2'],
     borderBottomWidth: 1,
-    borderBottomColor: theme.colors.borderColor, // Giữ nguyên
+    borderBottomColor: theme.colors.borderColor,
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    backgroundColor: theme.colors.background1, // lightGrey -> background1
+    backgroundColor: theme.colors.background1, 
   },
   weekName: {
-    fontSize: theme.typography.fontSize['level-4'], // h3.fontSize -> level-6
-    fontWeight: theme.typography.fontWeight['bold'], // h3.fontWeight -> level-6-bold
-    color: theme.colors.primary, // Giữ nguyên
+    fontSize: theme.typography.fontSize['level-4'],
+    fontWeight: theme.typography.fontWeight['bold'],
+    color: theme.colors.primary, 
   },
   weekDateRange: {
-    fontSize: theme.typography.fontSize['level-2'], // caption.fontSize -> level-2
-    color: theme.colors.textSecondary, // Giữ nguyên
+    fontSize: theme.typography.fontSize['level-2'],
+    color: theme.colors.textSecondary, 
   },
-  totalWeeklyWorkText: {
-    fontSize: theme.typography.fontSize['level-3'], // body.fontSize -> level-4
-    fontWeight: theme.typography.fontWeight['bold'], // 'bold' -> level-4-bold
-    color: theme.colors.success, // Giữ nguyên
+  totalWeeklyWorkContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  totalWeeklyWorkLabel: {
+    fontSize: theme.typography.fontSize['level-3'],
+    color: theme.colors.text,
+  },
+  totalWeeklyWorkValue: {
+    fontSize: theme.typography.fontSize['level-3'],
+    fontWeight: theme.typography.fontWeight['bold'],
+    color: theme.colors.success, 
   },
 });
 

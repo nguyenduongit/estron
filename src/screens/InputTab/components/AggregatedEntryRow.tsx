@@ -4,24 +4,15 @@ import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { theme } from '../../../theme';
 import IndividualEntryDetailRow from './IndividualEntryDetailRow';
-
-type ProductionItem = {
-  id: string;
-  stageCode: string;
-  quantity?: number | null;
-  po?: string | null;
-  box?: string | null;
-  batch?: string | null;
-  verified?: boolean | null;
-  workAmount?: number;
-};
+import { ProductionEntry } from '../../../types/data';
 
 interface AggregatedEntryRowProps {
   stageCode: string;
   totalQuantity: number;
-  items: ProductionItem[];
+  items: ProductionEntry[];
   disabled?: boolean;
   isDayFullyVerified?: boolean;
+  onEdit: (item: ProductionEntry) => void;
 }
 
 const AggregatedEntryRow: React.FC<AggregatedEntryRowProps> = ({
@@ -30,6 +21,7 @@ const AggregatedEntryRow: React.FC<AggregatedEntryRowProps> = ({
   items,
   disabled,
   isDayFullyVerified,
+  onEdit,
 }) => {
   const [isExpanded, setIsExpanded] = useState(false);
 
@@ -59,7 +51,12 @@ const AggregatedEntryRow: React.FC<AggregatedEntryRowProps> = ({
       {isExpanded && !disabled && (
         <View style={styles.detailsListContainer}>
           {items.map(item => (
-            <IndividualEntryDetailRow key={item.id} item={item} disabled={disabled} />
+            <IndividualEntryDetailRow 
+              key={item.id} 
+              item={item} 
+              disabled={disabled} 
+              onEdit={onEdit}
+            />
           ))}
         </View>
       )}
@@ -69,18 +66,16 @@ const AggregatedEntryRow: React.FC<AggregatedEntryRowProps> = ({
 
 const styles = StyleSheet.create({
   container: {
-    backgroundColor: theme.colors.cardBackground, // Thay đổi màu nền nếu cần để phân biệt với AggregatedEntryRow
-   
+    backgroundColor: theme.colors.cardBackground,
   },
   mainRowTouchable: {},
   mainRowContainer: {
-    height: 36,
+    height: 40,
     flexDirection: 'row',
     alignItems: 'center',
-    paddingLeft: theme.spacing['level-6'],
+    paddingLeft: theme.spacing['level-4'],
     paddingRight: theme.spacing['level-4'],
     backgroundColor: theme.colors.cardBackground,
-   
   },
   verificationIcon: {
     marginRight: theme.spacing['level-2'],
@@ -92,17 +87,15 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   stageCodeText: {
-    fontSize: theme.typography.fontSize['level-2'],
+    fontSize: theme.typography.fontSize['level-3'],
     fontWeight: theme.typography.fontWeight['bold'],
     color: theme.colors.text,
   },
   totalQuantityText: {
-    fontSize: theme.typography.fontSize['level-2'],
+    fontSize: theme.typography.fontSize['level-3'],
     color: theme.colors.text,
   },
-  detailsListContainer: {
-   
-  },
+  detailsListContainer: {},
   disabledVisual: {
     opacity: 0.6,
   },

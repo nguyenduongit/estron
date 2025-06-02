@@ -1,79 +1,77 @@
 // src/screens/InputTab/components/IndividualEntryDetailRow.tsx
 import React from 'react';
-import { View, Text, StyleSheet } from 'react-native';
-import Ionicons from '@expo/vector-icons/Ionicons'; // Import Ionicons
+import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
+import Ionicons from '@expo/vector-icons/Ionicons';
 import { theme } from '../../../theme';
+import { ProductionEntry } from '../../../types/data';
 
 interface IndividualEntryDetailRowProps {
-  item: {
-    id: string;
-    quantity?: number | null;
-    po?: string | null;
-    box?: string | null;
-    batch?: string | null;
-    verified?: boolean | null; // Đã thêm
-  };
+  item: ProductionEntry;
   disabled?: boolean;
+  onEdit: (item: ProductionEntry) => void;
 }
 
-const IndividualEntryDetailRow: React.FC<IndividualEntryDetailRowProps> = ({ item, disabled }) => {
+const IndividualEntryDetailRow: React.FC<IndividualEntryDetailRowProps> = ({ item, disabled, onEdit }) => {
   const displayQuantity = item.quantity ?? 0;
-
-  // Xác định icon và màu sắc dựa trên item.verified
   const iconName = item.verified === true ? "checkmark-circle-outline" : "remove-circle-outline";
   const iconColor = item.verified === true ? theme.colors.success : theme.colors.warning;
-  // Nếu verified là null hoặc undefined, có thể chọn một icon/màu mặc định hoặc không hiển thị icon
   const showIcon = item.verified !== null && item.verified !== undefined;
 
   return (
-    <View style={[styles.detailRowContainer, disabled && styles.disabledVisual]}>
-      {/* Icon ở đầu dòng */}
-      {showIcon && (
-        <Ionicons name={iconName as any} size={14} color={iconColor} style={styles.verificationIcon} />
-      )}
-      {!showIcon && ( // Giữ chỗ nếu không có icon để layout không bị xô lệch
-        <View style={styles.iconPlaceholder} />
-      )}
-
-      <View style={styles.infoItem_PO}>
-        <Text style={styles.label}>PO: </Text>
-        <Text style={[styles.value, disabled && styles.disabledText]}>{item.po || '-'}</Text>
-      </View>
-      <View style={styles.infoItem_Box}>
-        <Text style={styles.label}>Hộp: </Text>
-        <Text style={[styles.value, disabled && styles.disabledText]}>{item.box || '-'}</Text>
-      </View>
-      <View style={styles.infoItem_Batch}>
-        <Text style={styles.label}>Batch: </Text>
-        <Text style={[styles.value, disabled && styles.disabledText]}>{item.batch || '-'}</Text>
-      </View>
-      <View style={styles.infoItem_Quantity}>
-        <Text style={styles.label}>SL: </Text>
-        <Text style={[styles.value, disabled && styles.disabledText]}>
-          {displayQuantity.toLocaleString()}
-        </Text>
-      </View>
-    </View>
+    <TouchableOpacity onPress={() => onEdit(item)} disabled={disabled}>
+        <View style={[styles.detailRowContainer, disabled && styles.disabledVisual]}>
+            {showIcon && (
+                <Ionicons name={iconName as any} size={14} color={iconColor} style={styles.verificationIcon} />
+            )}
+            {!showIcon && <View style={styles.iconPlaceholder} />}
+            
+            <View style={styles.infoContainer}>
+                <View style={styles.infoItem_PO}>
+                    <Text style={styles.label}>PO: </Text>
+                    <Text style={[styles.value, disabled && styles.disabledText]}>{item.po || '-'}</Text>
+                </View>
+                <View style={styles.infoItem_Box}>
+                    <Text style={styles.label}>Hộp: </Text>
+                    <Text style={[styles.value, disabled && styles.disabledText]}>{item.box || '-'}</Text>
+                </View>
+                <View style={styles.infoItem_Batch}>
+                    <Text style={styles.label}>Batch: </Text>
+                    <Text style={[styles.value, disabled && styles.disabledText]}>{item.batch || '-'}</Text>
+                </View>
+                <View style={styles.infoItem_Quantity}>
+                    <Text style={styles.label}>SL: </Text>
+                    <Text style={[styles.value, disabled && styles.disabledText]}>
+                      {displayQuantity.toLocaleString()}
+                    </Text>
+                </View>
+            </View>
+        </View>
+    </TouchableOpacity>
   );
 };
 
 const styles = StyleSheet.create({
   detailRowContainer: {
-    height: 36,
+    height: 40,
     flexDirection: 'row',
-    justifyContent: 'space-between',
     alignItems: 'center',
     paddingVertical: theme.spacing['level-2'],
-    marginLeft:theme.spacing['level-8'], 
+    marginLeft:theme.spacing['level-7'], 
     backgroundColor: theme.colors.cardBackground,
     borderTopColor: theme.colors.borderColor,
     borderTopWidth: 1,
   },
-  verificationIcon: {
-    marginRight: theme.spacing['level-2'], // Khoảng cách giữa icon và PO
+  infoContainer: {
+    flex: 1,
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
   },
-  iconPlaceholder: { // Giữ chỗ nếu không có icon
-    width: 18 + theme.spacing['level-2'], // Kích thước icon + marginRight
+  verificationIcon: {
+    marginRight: theme.spacing['level-2'],
+  },
+  iconPlaceholder: {
+    width: 14 + theme.spacing['level-2'], 
   },
   infoItem_PO: {
     flex: 2.7,
@@ -100,11 +98,10 @@ const styles = StyleSheet.create({
     color: theme.colors.textSecondary,
   },
   value: {
-    fontSize: theme.typography.fontSize['level-1'],
+    fontSize: theme.typography.fontSize['level-2'],
     color: theme.colors.primary,
     fontWeight: theme.typography.fontWeight['bold'],
   },
-
   disabledVisual: {
     opacity: 0.6,
   },

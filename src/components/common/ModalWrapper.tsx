@@ -34,7 +34,7 @@ const ModalWrapper: React.FC<ModalWrapperProps> = ({ visible, onClose, children,
         });
 
       } else {
-        setDynamicMaxWidth(Math.min(screenWidth * 0.9, ORIGINAL_MAX_WIDTH));
+        setDynamicMaxWidth(Math.min(screenWidth , ORIGINAL_MAX_WIDTH));
         setDynamicOverlayStyle(styles.overlayBase);
       }
     };
@@ -88,36 +88,37 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   overlayBase: {
-    backgroundColor: "rgba(0, 0, 0, 0.6)", // Tăng độ mờ cho dark theme
+    backgroundColor: "rgba(0, 0, 0, 0.6)",
     justifyContent: "center",
     alignItems: "center",
-    height: Platform.OS === 'web' ? '100%' : undefined,
+    height: '100%',
     width: Platform.OS === 'web' ? undefined : '100%',
     padding: Platform.OS === 'web' ? 0 : undefined,
-  },
-  modalContentBase: {
-    width: "90%",
-    backgroundColor: theme.colors.cardBackground, // background -> cardBackground
-    borderRadius: theme.borderRadius['level-7'], // lg -> level-7
-    padding: theme.spacing['level-6'], // lg -> level-6
-    ...theme.shadow.lg, // Giữ nguyên
-  },
-  header: {
+    },
+    modalContentBase: {
+    width: "100%",
+    backgroundColor: theme.colors.cardBackground,
+    borderRadius: theme.borderRadius['level-6'],
+    padding: theme.spacing['level-2'],
+    ...theme.shadow.lg,
+    marginHorizontal:theme.spacing['level-8'],
+    },
+    header: {
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
-    marginBottom: theme.spacing['level-4'], // md -> level-4
+    marginBottom: theme.spacing['level-4'],
     borderBottomWidth: 1,
-    borderBottomColor: theme.colors.borderColor, // lightGrey -> borderColor
-    paddingBottom: theme.spacing['level-2'], // sm -> level-2
-  },
-  title: {
-    fontSize: theme.typography.fontSize['level-6'], // h3.fontSize (20) -> level-6 (20)
-    fontWeight: theme.typography.fontWeight['bold'], // h3.fontWeight ('bold') -> level-6-bold
-    color: theme.colors.text, // Giữ nguyên
+    borderBottomColor: theme.colors.borderColor,
+    paddingBottom: theme.spacing['level-2'],
+    },
+    title: {
+    fontSize: theme.typography.fontSize['level-6'],
+    fontWeight: theme.typography.fontWeight['bold'],
+    color: theme.colors.text,
   },
   closeButton: {
-    padding: theme.spacing['level-1'], // xs -> level-1
+    padding: theme.spacing['level-1'], 
   },
 });
 

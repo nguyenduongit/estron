@@ -6,7 +6,7 @@
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
     "userInterfaceStyle": "light",
-    "newArchEnabled": false,
+    "newArchEnabled": true,
     "splash": {
       "image": "./assets/images/splash.png",
       "resizeMode": "contain",
@@ -51,6 +51,5 @@
       }
     },
     "sdkVersion": "53.0.0"
-  },
-  "name": "estron-production"
+  }
 }

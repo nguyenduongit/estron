@@ -17,7 +17,10 @@
     "@react-navigation/native-stack": "^7.3.13",
     "@react-navigation/stack": "^7.3.2",
     "@supabase/supabase-js": "^2.49.8",
+    "assert": "^2.1.0",
+    "browserify-zlib": "^0.2.0",
     "date-fns": "^4.1.0",
+    "events": "^3.3.0",
     "expo": "~53.0.9",
     "expo-clipboard": "^7.1.4",
     "expo-dev-client": "~5.1.8",
@@ -25,6 +28,8 @@
     "expo-pwa": "^0.0.58",
     "expo-status-bar": "~2.2.3",
     "expo-system-ui": "~5.0.7",
+    "https-browserify": "^1.0.0",
+    "path-browserify": "^1.0.1",
     "react": "19.0.0",
     "react-dom": "19.0.0",
     "react-native": "0.79.2",
@@ -37,11 +42,16 @@
     "react-native-safe-area-context": "5.4.0",
     "react-native-screens": "~4.10.0",
     "react-native-svg": "15.11.2",
+    "react-native-tcp-socket": "^6.3.0",
+    "react-native-tls": "^0.0.2",
     "react-native-url-polyfill": "^2.0.0",
     "react-native-uuid": "^2.0.3",
     "react-native-vector-icons": "^10.2.0",
     "react-native-web": "^0.20.0",
-    "swiper": "^11.2.8"
+    "readable-stream": "^4.7.0",
+    "stream-http": "^3.2.0",
+    "swiper": "^11.2.8",
+    "util": "^0.12.5"
   },
   "devDependencies": {
     "@babel/core": "^7.25.2",
@@ -49,6 +59,7 @@
     "@types/react-native": "^0.72.8",
     "@types/react-native-vector-icons": "^6.4.18",
     "@types/uuid": "^10.0.0",
+    "prettier": "^3.5.3",
     "typescript": "~5.8.3"
   },
   "private": true

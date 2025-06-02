@@ -141,30 +141,30 @@ export default function InputScreen({ route, navigation }: Props) {
         label="Số lượng"
         value={quantity}
         onChangeText={setQuantity}
-        placeholder="Nhập số lượng (ví dụ: 123)"
+        placeholder="Nhập số lượng (ví dụ: 270)"
         keyboardType="numeric"
         error={(formError && !quantity.trim() && !po.trim() && !box.trim() && !batch.trim()) ? formError : (quantity.trim() && (isNaN(parseFloat(quantity)) || parseFloat(quantity) < 0) ? 'Số lượng không hợp lệ' : undefined)}
         touched={!!formError || !!quantity.trim()}
       />
       <TextInput
-        label="PO (Số lệnh sản xuất)"
+        label="PO"
         value={po}
         onChangeText={setPo}
-        placeholder="Nhập số PO (văn bản)"
+        placeholder="Nhập số PO"
         keyboardType="default"
       />
        <TextInput
         label="Hộp"
         value={box}
         onChangeText={setBox}
-        placeholder="Nhập mã hộp (văn bản)"
+        placeholder="Nhập mã hộp"
         keyboardType="default"
       />
       <TextInput
-        label="Batch/Mẻ"
+        label="Batch"
         value={batch}
         onChangeText={setBatch}
-        placeholder="Nhập số batch (văn bản)"
+        placeholder="Nhập số batch"
         keyboardType="default"
       />
 

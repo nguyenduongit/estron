@@ -33,7 +33,7 @@ function InputStack() {
         name="ProductList"
         component={ProductScreen}
         options={({ navigation }: { navigation: StackNavigationProp<InputStackNavigatorParamList, 'ProductList'> }) => ({
-          title: 'Sản Lượng Estron', // Có thể thay đổi dựa trên logic của ProductScreen
+          title: 'Sản Lượng Estron',
           headerRight: () => (
             <TouchableOpacity
               onPress={() => navigation.navigate('Settings')}
