@@ -52,22 +52,18 @@ export default function RootNavigator() {
     );
   }
 
-  // Tùy chỉnh theme cho NavigationContainer từ theme của bạn
-  // Bỏ baseNavigationTheme vì theme đã có cấu trúc mong muốn
   const navigationTheme = {
-    ...NavigationDefaultTheme, // Bắt đầu với theme mặc định của React Navigation
-    dark: true, // Theme của chúng ta là dark theme
+    ...NavigationDefaultTheme,
+    dark: true,
     colors: {
-      ...NavigationDefaultTheme.colors, // Giữ lại các màu mặc định khác nếu cần
+      ...NavigationDefaultTheme.colors,
       primary: theme.colors.primary,
-      background: theme.colors.background2, // Màu nền chính của app
-      card: theme.colors.cardBackground,   // Màu nền cho card/header của navigator
-      text: theme.colors.text,           // Màu chữ chính
-      border: theme.colors.borderColor,    // Màu viền (ví dụ: viền header)
-      notification: theme.colors.primary,  // Màu cho notification badges, etc.
+      background: theme.colors.background2,
+      card: theme.colors.cardBackground,
+      text: theme.colors.text,
+      border: theme.colors.borderColor,
+      notification: theme.colors.primary,
     },
-    // fonts không có trong theme.ts nên giữ nguyên từ NavigationDefaultTheme.fonts
-    // Nếu bạn muốn tùy chỉnh font, bạn có thể định nghĩa trong theme.ts và tham chiếu ở đây.
   };
 
   return (
