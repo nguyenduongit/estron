@@ -8,7 +8,6 @@ const config = getDefaultConfig(__dirname, {
   // Mặc định là true nếu bạn có "web" trong "platforms" của app.json
   isCSSEnabled: true,
 });
-
 config.resolver.extraNodeModules = {
   ...config.resolver.extraNodeModules,
   assert: require.resolve('assert'),
@@ -24,5 +23,6 @@ config.resolver.extraNodeModules = {
   tls: require.resolve('react-native-tcp-socket'),
   zlib: require.resolve('browserify-zlib'),
 };
+
 
 module.exports = config;

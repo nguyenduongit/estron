@@ -1,15 +1,6 @@
 // src/screens/InputTab/ProductScreen.tsx
 import React, { useState, useEffect, useCallback, useLayoutEffect, lazy, Suspense } from 'react';
-import {
-  View,
-  Text,
-  StyleSheet,
-  FlatList,
-  TouchableOpacity,
-  ActivityIndicator,
-  // Alert, // Đã được thay thế
-  Platform,
-} from 'react-native';
+import { View, Text, StyleSheet, FlatList, TouchableOpacity, ActivityIndicator, Platform } from 'react-native';
 import { Swiper, SwiperSlide } from 'swiper/react';
 import 'swiper/css';
 import type { StackNavigationProp } from '@react-navigation/stack';
@@ -67,15 +58,11 @@ export default function ProductScreen() {
   const [isLoading, setIsLoading] = useState(true);
   const [userSelectedQuotas, setUserSelectedQuotas] = useState<UserSelectedQuota[]>([]);
   const [userProfile, setUserProfile] = useState<Profile | null>(null);
-  const [estronWeekInfo, setEstronWeekInfo] = useState<ReturnType<
-    typeof getCurrentEstronWeekInfo
-  > | null>(null);
+  const [estronWeekInfo, setEstronWeekInfo] = useState<ReturnType<typeof getCurrentEstronWeekInfo> | null>(null);
   const [processedWeeksData, setProcessedWeeksData] = useState<ProcessedWeekData[]>([]);
   const [isProductModalVisible, setIsProductModalVisible] = useState(false);
   const [currentPage, setCurrentPage] = useState(0);
-  const [selectedDateForInput, setSelectedDateForInput] = useState<string>(
-    formatToYYYYMMDD(getToday())
-  );
+  const [selectedDateForInput, setSelectedDateForInput] = useState<string>(formatToYYYYMMDD(getToday()));
   const [userId, setUserId] = useState<string | null>(null);
 
   const [isEditModalVisible, setIsEditModalVisible] = useState(false);
@@ -87,16 +74,12 @@ export default function ProductScreen() {
   const [isSaving, setIsSaving] = useState(false);
 
   const [isCustomAlertVisible, setIsCustomAlertVisible] = useState(false);
-  // const [customAlertTitle, setCustomAlertTitle] = useState(''); // AlertModal không dùng title
   const [customAlertMessage, setCustomAlertMessage] = useState('');
   const [customAlertButtons, setCustomAlertButtons] = useState<AlertButtonType[]>([]);
 
   const showAlert = (message: string, buttons?: AlertButtonType[]) => {
-    // setCustomAlertTitle(title); // AlertModal không dùng title
     setCustomAlertMessage(message);
-    setCustomAlertButtons(
-      buttons || [{ text: 'OK', onPress: () => setIsCustomAlertVisible(false) }]
-    );
+    setCustomAlertButtons(buttons || [{ text: 'OK', onPress: () => setIsCustomAlertVisible(false) }]);
     setIsCustomAlertVisible(true);
   };
 
@@ -146,17 +129,8 @@ export default function ProductScreen() {
             )
           : Promise.resolve([]);
 
-      const [
-        profileData,
-        selectedQuotasData,
-        productionEntriesFromSupabase,
-        supplementaryDataForMonth,
-      ] = await Promise.all([
-        getUserProfile(userId),
-        getUserSelectedQuotas(userId),
-        productionPromise,
-        suppDataPromise,
-      ]);
+      const [profileData, selectedQuotasData, productionEntriesFromSupabase, supplementaryDataForMonth] =
+        await Promise.all([getUserProfile(userId), getUserSelectedQuotas(userId), productionPromise, suppDataPromise]);
 
       setUserProfile(profileData);
       setUserSelectedQuotas(selectedQuotasData);
@@ -171,9 +145,7 @@ export default function ProductScreen() {
       const allQuotaSettingsNeededCodes = selectedQuotasData.map(usq => usq.product_code);
       const quotaSettingsMap = new Map<string, QuotaSetting>();
       if (allQuotaSettingsNeededCodes.length > 0) {
-        const settingsPromises = allQuotaSettingsNeededCodes.map(pc =>
-          getQuotaSettingByProductCode(pc)
-        );
+        const settingsPromises = allQuotaSettingsNeededCodes.map(pc => getQuotaSettingByProductCode(pc));
         const settingsResults = await Promise.all(settingsPromises);
         settingsResults.forEach(qs => {
           if (qs) quotaSettingsMap.set(qs.product_code, qs);
@@ -185,15 +157,11 @@ export default function ProductScreen() {
         const weeksData: ProcessedWeekData[] = weeksToProcess
           .map(week => {
             let totalWeeklyWorkAcc = 0;
-            const daysInWeekToDisplay = week.days.filter(
-              dayDate => new Date(dayDate) <= todayForFilter
-            );
+            const daysInWeekToDisplay = week.days.filter(dayDate => new Date(dayDate) <= todayForFilter);
 
             const dailyDataForWeek: DailyProductionData[] = daysInWeekToDisplay.map(dayDate => {
               const yyyymmdd = formatToYYYYMMDD(dayDate);
-              const entriesForDay = productionEntriesFromSupabase.filter(
-                entry => entry.date === yyyymmdd
-              );
+              const entriesForDay = productionEntriesFromSupabase.filter(entry => entry.date === yyyymmdd);
               const suppDataForDay = supplementaryDataMap.get(yyyymmdd);
               let totalDailyWork = 0;
 
@@ -201,10 +169,7 @@ export default function ProductScreen() {
                 const quotaSetting = quotaSettingsMap.get(entry.product_code);
                 let workAmount = 0;
                 if (quotaSetting && profileData?.salary_level && entry.quantity != null) {
-                  const dailyQuota = getQuotaValueBySalaryLevel(
-                    quotaSetting,
-                    profileData.salary_level
-                  );
+                  const dailyQuota = getQuotaValueBySalaryLevel(quotaSetting, profileData.salary_level);
                   if (dailyQuota > 0) {
                     workAmount = entry.quantity / dailyQuota;
                   }
@@ -246,8 +211,7 @@ export default function ProductScreen() {
             const todayWeekIndex = weeksData.findIndex(
               w =>
                 w.weekInfo.name === currentEstronInfo.currentWeek!.name &&
-                w.weekInfo.startDate.getTime() ===
-                  currentEstronInfo.currentWeek!.startDate.getTime()
+                w.weekInfo.startDate.getTime() === currentEstronInfo.currentWeek!.startDate.getTime()
             );
             setCurrentPage(todayWeekIndex !== -1 ? todayWeekIndex : weeksData.length - 1);
           } else {
@@ -298,20 +262,13 @@ export default function ProductScreen() {
     }
     setIsLoading(true);
     try {
-      const quotaSettingDetails = await getQuotaSettingByProductCode(
-        selectedUserQuota.product_code
-      );
+      const quotaSettingDetails = await getQuotaSettingByProductCode(selectedUserQuota.product_code);
       if (!quotaSettingDetails) {
-        showAlert(
-          `Không tìm thấy chi tiết định mức cho sản phẩm '${selectedUserQuota.product_code}'.`
-        );
+        showAlert(`Không tìm thấy chi tiết định mức cho sản phẩm '${selectedUserQuota.product_code}'.`);
         setIsLoading(false);
         return;
       }
-      const actualQuotaValue = getQuotaValueBySalaryLevel(
-        quotaSettingDetails,
-        userProfile.salary_level
-      );
+      const actualQuotaValue = getQuotaValueBySalaryLevel(quotaSettingDetails, userProfile.salary_level);
       navigation.navigate('InputDetails', {
         stageCode: selectedUserQuota.product_code,
         quotaValue: actualQuotaValue,
@@ -367,10 +324,7 @@ export default function ProductScreen() {
 
     setIsSaving(true);
     const updatedData: Partial<
-      Omit<
-        ProductionEntry,
-        'id' | 'user_id' | 'product_code' | 'date' | 'created_at' | 'verified' | 'quota_percentage'
-      >
+      Omit<ProductionEntry, 'id' | 'user_id' | 'product_code' | 'date' | 'created_at' | 'verified' | 'quota_percentage'>
     > = {
       quantity: quantityValue,
       po: editPo.trim() || null,
@@ -393,31 +347,26 @@ export default function ProductScreen() {
   const handleDeleteEntry = (entry: ProductionEntry) => {
     if (!entry) return;
 
-    // SỬA LỖI 1: Kết hợp "title" (nếu có) vào message cho showAlert
-    // AlertModal chỉ có message, không có title riêng.
     const message = `Xác nhận xóa\n\nBạn có chắc chắn muốn xóa mục sản phẩm "${entry.product_code}" với số lượng ${entry.quantity ?? 'N/A'} không?`;
 
-    showAlert(
-      message, // Chỉ truyền message
-      [
-        { text: 'Hủy', style: 'secondary', onPress: closeAlert },
-        {
-          text: 'Xóa',
-          style: 'danger',
-          onPress: async () => {
-            closeAlert();
-            const success = await deleteProductionEntry(entry.id);
-            if (success) {
-              showAlert('Mục sản phẩm đã được xóa.');
-              handleCloseEditModal();
-              loadInitialData();
-            } else {
-              showAlert('Không thể xóa mục này. Vui lòng thử lại.');
-            }
-          },
+    showAlert(message, [
+      { text: 'Hủy', style: 'secondary', onPress: closeAlert },
+      {
+        text: 'Xóa',
+        style: 'danger',
+        onPress: async () => {
+          closeAlert();
+          const success = await deleteProductionEntry(entry.id);
+          if (success) {
+            showAlert('Mục sản phẩm đã được xóa.');
+            handleCloseEditModal();
+            loadInitialData();
+          } else {
+            showAlert('Không thể xóa mục này. Vui lòng thử lại.');
+          }
         },
-      ]
-    );
+      },
+    ]);
   };
 
   if (isLoading && !userId) {
@@ -425,9 +374,8 @@ export default function ProductScreen() {
       <View style={styles.centered}>
         <ActivityIndicator size="large" color={theme.colors.primary} />
         <Text style={{ color: theme.colors.textSecondary, marginTop: theme.spacing['level-2'] }}>
-          {' '}
-          Đang tải thông tin người dùng...{' '}
-        </Text>{' '}
+          Đang tải thông tin người dùng...
+        </Text>
       </View>
     );
   }
@@ -436,20 +384,15 @@ export default function ProductScreen() {
       <View style={styles.centered}>
         <ActivityIndicator size="large" color={theme.colors.primary} />
         <Text style={{ color: theme.colors.textSecondary, marginTop: theme.spacing['level-2'] }}>
-          {' '}
-          Đang tải dữ liệu...{' '}
-        </Text>{' '}
+          Đang tải dữ liệu...
+        </Text>
       </View>
     );
   }
   if (!userId && !isLoading) {
     return (
       <View style={styles.centered}>
-        {' '}
-        <Text style={styles.emptyText}>
-          {' '}
-          Không thể tải dữ liệu do chưa xác thực người dùng.{' '}
-        </Text>{' '}
+        <Text style={styles.emptyText}>Không thể tải dữ liệu do chưa xác thực người dùng.</Text>
         <Button
           title="Thử Lại"
           onPress={() => {
@@ -463,20 +406,15 @@ export default function ProductScreen() {
             fetchUser();
           }}
           style={{ marginTop: theme.spacing['level-4'] }}
-        />{' '}
+        />
       </View>
     );
   }
   if (userId && !isLoading && (!estronWeekInfo || processedWeeksData.length === 0)) {
     return (
       <View style={styles.centered}>
-        {' '}
-        <Text style={styles.emptyText}>Không có dữ liệu tuần để hiển thị.</Text>{' '}
-        <Button
-          title="Thử Tải Lại"
-          onPress={loadInitialData}
-          style={{ marginTop: theme.spacing['level-4'] }}
-        />{' '}
+        <Text style={styles.emptyText}>Không có dữ liệu tuần để hiển thị.</Text>
+        <Button title="Thử Tải Lại" onPress={loadInitialData} style={{ marginTop: theme.spacing['level-4'] }} />
       </View>
     );
   }
@@ -552,10 +490,7 @@ export default function ProductScreen() {
             data={userSelectedQuotas}
             keyExtractor={item => item.product_code}
             renderItem={({ item }) => (
-              <TouchableOpacity
-                style={styles.productModalItemGrid}
-                onPress={() => handleSelectProduct(item)}
-              >
+              <TouchableOpacity style={styles.productModalItemGrid} onPress={() => handleSelectProduct(item)}>
                 <Text style={styles.productStageCodeGrid}>{item.product_code}</Text>
                 <Text style={styles.productDailyQuotaGrid} numberOfLines={2}>
                   {item.product_name || '(Chưa có tên SP)'}
@@ -634,18 +569,12 @@ export default function ProductScreen() {
             />
           </View>
           <View style={styles.modalActions}>
-            <Button
-              title="Hủy"
-              onPress={handleCloseEditModal}
-              type="secondary"
-              style={styles.modalButton}
-            />
+            <Button title="Hủy" onPress={handleCloseEditModal} type="secondary" style={styles.modalButton} />
             <Button
               title={isSaving ? 'Đang lưu...' : 'Lưu thay đổi'}
               onPress={handleUpdateEntry}
               type="primary"
               style={styles.modalButton}
-              // SỬA LỖI 2: Đảm bảo giá trị là boolean
               disabled={isSaving || !!editingEntry?.verified}
             />
           </View>

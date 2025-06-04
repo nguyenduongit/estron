@@ -26,7 +26,7 @@ type SettingScreenNavigationProp = StackNavigationProp<InputStackNavigatorParamL
 
 export default function SettingScreen() {
   const navigation = useNavigation<SettingScreenNavigationProp>();
-  const isFocused = useIsFocused(); // Dòng 28 trong ảnh chụp lỗi
+  const isFocused = useIsFocused();
 
   const [userSelectedQuotas, setUserSelectedQuotas] = useState<UserSelectedQuota[]>([]);
   const [isLoading, setIsLoading] = useState(false);
@@ -41,27 +41,30 @@ export default function SettingScreen() {
 
   const [isDeleteConfirmModalVisible, setIsDeleteConfirmModalVisible] = useState(false);
   const [quotaToDelete, setQuotaToDelete] = useState<UserSelectedQuota | null>(null);
-  
+
   const [userId, setUserId] = useState<string | null>(null);
   const searchTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
   useEffect(() => {
     const fetchUser = async () => {
       try {
-        const { data: { user }, error: userError } = await supabase.auth.getUser();
+        const {
+          data: { user },
+          error: userError,
+        } = await supabase.auth.getUser();
         if (userError) {
-          console.error("[SettingScreen] Lỗi khi lấy user từ Supabase:", userError);
-          Alert.alert("Lỗi Xác Thực", "Không thể lấy thông tin người dùng. Vui lòng thử đăng nhập lại.");
+          console.error('[SettingScreen] Lỗi khi lấy user từ Supabase:', userError);
+          Alert.alert('Lỗi Xác Thực', 'Không thể lấy thông tin người dùng. Vui lòng thử đăng nhập lại.');
           return;
         }
         if (user) {
           setUserId(user.id);
         } else {
-          console.warn("[SettingScreen] Không tìm thấy user nào đang đăng nhập.");
+          console.warn('[SettingScreen] Không tìm thấy user nào đang đăng nhập.');
         }
       } catch (error) {
-        console.error("[SettingScreen] Exception khi lấy thông tin người dùng:", error);
-        Alert.alert("Lỗi", "Có lỗi nghiêm trọng xảy ra khi lấy thông tin người dùng.");
+        console.error('[SettingScreen] Exception khi lấy thông tin người dùng:', error);
+        Alert.alert('Lỗi', 'Có lỗi nghiêm trọng xảy ra khi lấy thông tin người dùng.');
       }
     };
     fetchUser();
@@ -69,15 +72,15 @@ export default function SettingScreen() {
 
   const loadUserQuotas = useCallback(async () => {
     if (!userId) {
-      return; 
+      return;
     }
     setIsLoading(true);
     try {
       const storedQuotas = await getUserSelectedQuotas(userId);
       setUserSelectedQuotas(storedQuotas);
     } catch (error) {
-      console.error("[SettingScreen] loadUserQuotas error:", error);
-      Alert.alert("Lỗi", "Không thể tải danh sách định mức đã chọn.");
+      console.error('[SettingScreen] loadUserQuotas error:', error);
+      Alert.alert('Lỗi', 'Không thể tải danh sách định mức đã chọn.');
     } finally {
       setIsLoading(false);
     }
@@ -89,28 +92,27 @@ export default function SettingScreen() {
     }
   }, [isFocused, userId, loadUserQuotas]);
 
-  // Khai báo handleSaveOrder trước khi nó được sử dụng trong useLayoutEffect
   const handleSaveOrder = useCallback(async () => {
     if (!userId) {
-      Alert.alert("Lỗi", "Không tìm thấy thông tin người dùng để lưu thứ tự.");
+      Alert.alert('Lỗi', 'Không tìm thấy thông tin người dùng để lưu thứ tự.');
       return;
     }
     if (userSelectedQuotas.length === 0 && isEditMode) {
-        setIsEditMode(false);
-        return;
+      setIsEditMode(false);
+      return;
     }
-            
+
     setIsLoading(true);
     const success = await saveUserSelectedQuotasOrder(
       userId,
       userSelectedQuotas.map(q => ({ product_code: q.product_code, zindex: q.zindex }))
     );
     if (success) {
-      Alert.alert("Đã lưu", "Thứ tự định mức đã được cập nhật.");
+      Alert.alert('Đã lưu', 'Thứ tự định mức đã được cập nhật.');
     } else {
-      Alert.alert("Lỗi", "Không thể lưu thứ tự định mức. Vui lòng thử lại.");
+      Alert.alert('Lỗi', 'Không thể lưu thứ tự định mức. Vui lòng thử lại.');
     }
-    setIsEditMode(false); 
+    setIsEditMode(false);
     setIsLoading(false);
   }, [userId, userSelectedQuotas, isEditMode]);
 
@@ -120,25 +122,26 @@ export default function SettingScreen() {
         <TouchableOpacity
           onPress={() => {
             if (isEditMode) {
-              handleSaveOrder(); 
+              handleSaveOrder();
             } else {
               setIsEditMode(true);
             }
           }}
           style={{ marginRight: theme.spacing['level-3'], padding: theme.spacing['level-1'] }}
         >
-          <Text style={{ 
-            color: theme.colors.textOnPrimary,
-            fontSize: theme.typography.fontSize['level-3'],
-            fontWeight: theme.typography.fontWeight['bold']
-          }}>
+          <Text
+            style={{
+              color: theme.colors.textOnPrimary,
+              fontSize: theme.typography.fontSize['level-3'],
+              fontWeight: theme.typography.fontWeight['bold'],
+            }}
+          >
             {isEditMode ? 'Lưu' : 'Sửa'}
           </Text>
         </TouchableOpacity>
       ),
     });
   }, [navigation, isEditMode, userSelectedQuotas, handleSaveOrder]); // handleSaveOrder vẫn cần trong dependencies của useLayoutEffect
-
 
   const handleOpenAddModal = () => {
     setCurrentProductCodeInput('');
@@ -159,7 +162,7 @@ export default function SettingScreen() {
   const handleProductCodeChange = (text: string) => {
     const upperCaseText = text.toUpperCase();
     setCurrentProductCodeInput(upperCaseText);
-    setFoundProduct(null); 
+    setFoundProduct(null);
     setProductSearchMessage(null);
     setProductSearchMessageType(null);
 
@@ -171,7 +174,7 @@ export default function SettingScreen() {
       setIsSearchingProduct(false);
       return;
     }
-    
+
     setIsSearchingProduct(true);
     searchTimeoutRef.current = setTimeout(async () => {
       try {
@@ -186,39 +189,37 @@ export default function SettingScreen() {
           setProductSearchMessageType('error');
         }
       } catch (error) {
-        console.error("[SettingScreen] Error during product code search:", error);
+        console.error('[SettingScreen] Error during product code search:', error);
         setFoundProduct(null);
-        setProductSearchMessage("Lỗi khi tra cứu mã sản phẩm. Vui lòng thử lại.");
+        setProductSearchMessage('Lỗi khi tra cứu mã sản phẩm. Vui lòng thử lại.');
         setProductSearchMessageType('error');
       } finally {
         setIsSearchingProduct(false);
       }
-    }, 600); 
+    }, 600);
   };
 
   const handleAddProduct = async () => {
     if (!userId) {
-      Alert.alert("Lỗi", "Không thể xác định người dùng.");
+      Alert.alert('Lỗi', 'Không thể xác định người dùng.');
       return;
     }
     if (!foundProduct || !currentProductCodeInput.trim()) {
-      Alert.alert("Lỗi", "Vui lòng nhập mã sản phẩm hợp lệ và đã được tìm thấy.");
+      Alert.alert('Lỗi', 'Vui lòng nhập mã sản phẩm hợp lệ và đã được tìm thấy.');
       return;
     }
 
-    const isAlreadyAdded = userSelectedQuotas.some(
-        (quota) => quota.product_code === foundProduct.product_code
-    );
+    const isAlreadyAdded = userSelectedQuotas.some(quota => quota.product_code === foundProduct.product_code);
 
     if (isAlreadyAdded) {
-        Alert.alert("Thông báo", `Sản phẩm '${foundProduct.product_code}' đã có trong danh sách của bạn.`);
-        return;
+      Alert.alert('Thông báo', `Sản phẩm '${foundProduct.product_code}' đã có trong danh sách của bạn.`);
+      return;
     }
 
     setIsLoading(true);
     Keyboard.dismiss();
     try {
-      const newOrder = userSelectedQuotas.length; 
+      const newOrder = userSelectedQuotas.length;
       const addedQuota = await addUserSelectedQuota(
         userId,
         foundProduct.product_code,
@@ -227,15 +228,18 @@ export default function SettingScreen() {
       );
 
       if (addedQuota) {
-        await loadUserQuotas(); 
+        await loadUserQuotas();
         handleCloseAddModal();
-        Alert.alert("Thành công", `Đã thêm sản phẩm '${addedQuota.product_name}'.`);
+        Alert.alert('Thành công', `Đã thêm sản phẩm '${addedQuota.product_name}'.`);
       } else {
-         Alert.alert("Lỗi", `Không thể thêm sản phẩm. Mã '${foundProduct.product_code}' có thể đã tồn tại hoặc có lỗi khác từ server.`);
+        Alert.alert(
+          'Lỗi',
+          `Không thể thêm sản phẩm. Mã '${foundProduct.product_code}' có thể đã tồn tại hoặc có lỗi khác từ server.`
+        );
       }
     } catch (error) {
-      console.error("[SettingScreen] Exception during handleAddProduct:", error);
-      Alert.alert("Lỗi", "Đã có lỗi xảy ra khi thêm sản phẩm.");
+      console.error('[SettingScreen] Exception during handleAddProduct:', error);
+      Alert.alert('Lỗi', 'Đã có lỗi xảy ra khi thêm sản phẩm.');
     } finally {
       setIsLoading(false);
     }
@@ -243,18 +247,18 @@ export default function SettingScreen() {
 
   const handleDeleteQuotaPress = (productCodeToDelete: string) => {
     if (!userId) {
-      Alert.alert("Lỗi", "Không tìm thấy thông tin người dùng."); 
+      Alert.alert('Lỗi', 'Không tìm thấy thông tin người dùng.');
       return;
     }
     if (!isEditMode) {
-        return;
+      return;
     }
     const quota = userSelectedQuotas.find(q => q.product_code === productCodeToDelete);
     if (!quota) {
       return;
     }
-    setQuotaToDelete(quota); 
-    setIsDeleteConfirmModalVisible(true); 
+    setQuotaToDelete(quota);
+    setIsDeleteConfirmModalVisible(true);
   };
 
   const handleCancelDelete = () => {
@@ -266,7 +270,7 @@ export default function SettingScreen() {
     if (!quotaToDelete || !userId) {
       setIsDeleteConfirmModalVisible(false);
       setQuotaToDelete(null);
-      Alert.alert("Lỗi", "Có lỗi xảy ra, không thể xác định mục cần xóa.");
+      Alert.alert('Lỗi', 'Có lỗi xảy ra, không thể xác định mục cần xóa.');
       return;
     }
 
@@ -274,31 +278,31 @@ export default function SettingScreen() {
     const productName = quotaToDelete.product_name || productCodeToDelete;
 
     setIsLoading(true);
-    setIsDeleteConfirmModalVisible(false); 
+    setIsDeleteConfirmModalVisible(false);
 
     const deleteSuccess = await deleteUserSelectedQuota(userId, productCodeToDelete);
-    
+
     if (deleteSuccess) {
-      Alert.alert("Đã xóa", `'${productName}' đã được xóa.`);
-      
+      Alert.alert('Đã xóa', `'${productName}' đã được xóa.`);
+
       const remainingQuotas = userSelectedQuotas.filter(q => q.product_code !== productCodeToDelete);
       const updatedQuotasWithNewZIndex = remainingQuotas.map((q, index) => ({ ...q, zindex: index }));
-      setUserSelectedQuotas(updatedQuotasWithNewZIndex); 
+      setUserSelectedQuotas(updatedQuotasWithNewZIndex);
 
       if (updatedQuotasWithNewZIndex.length > 0) {
         const saveOrderSuccess = await saveUserSelectedQuotasOrder(
-            userId, 
-            updatedQuotasWithNewZIndex.map(q => ({ product_code: q.product_code, zindex: q.zindex }))
+          userId,
+          updatedQuotasWithNewZIndex.map(q => ({ product_code: q.product_code, zindex: q.zindex }))
         );
         if (!saveOrderSuccess) {
-          console.error("[SettingScreen] Failed to save order of remaining items post-delete.");
-          Alert.alert("Lỗi cập nhật thứ tự", "Xóa thành công nhưng không thể cập nhật lại thứ tự các mục còn lại.");
+          console.error('[SettingScreen] Failed to save order of remaining items post-delete.');
+          Alert.alert('Lỗi cập nhật thứ tự', 'Xóa thành công nhưng không thể cập nhật lại thứ tự các mục còn lại.');
         }
       }
     } else {
-      Alert.alert("Lỗi", "Không thể xóa định mức. Vui lòng thử lại.");
+      Alert.alert('Lỗi', 'Không thể xóa định mức. Vui lòng thử lại.');
     }
-    setQuotaToDelete(null); 
+    setQuotaToDelete(null);
     setIsLoading(false);
   };
 
@@ -307,26 +311,29 @@ export default function SettingScreen() {
       <ScaleDecorator>
         <TouchableOpacity
           onLongPress={isEditMode ? drag : undefined}
-          disabled={isActive || !isEditMode} 
-          style={[
-            styles.itemContainer,
-            isActive && styles.itemActive,
-            !isEditMode && styles.itemNonEditable, 
-          ]}
+          disabled={isActive || !isEditMode}
+          style={[styles.itemContainer, isActive && styles.itemActive, !isEditMode && styles.itemNonEditable]}
         >
           {isEditMode && (
-            <TouchableOpacity 
+            <TouchableOpacity
               onPress={() => {
-                handleDeleteQuotaPress(item.product_code); 
-              }} 
+                handleDeleteQuotaPress(item.product_code);
+              }}
               style={styles.deleteButton}
-              hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }} 
+              hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
             >
               <Ionicons name="remove-circle" size={26} color={theme.colors.danger} />
             </TouchableOpacity>
           )}
-          {!isEditMode && ( 
-             <View style={{width: styles.deleteButton.paddingHorizontal ? 26 + (styles.deleteButton.paddingHorizontal as number) * 2 : 26, marginRight: styles.deleteButton.marginRight }} />
+          {!isEditMode && (
+            <View
+              style={{
+                width: styles.deleteButton.paddingHorizontal
+                  ? 26 + (styles.deleteButton.paddingHorizontal as number) * 2
+                  : 26,
+                marginRight: styles.deleteButton.marginRight,
+              }}
+            />
           )}
 
           <View style={styles.itemTextContainer}>
@@ -335,27 +342,31 @@ export default function SettingScreen() {
           </View>
 
           {isEditMode ? (
-            <TouchableOpacity 
-              onPressIn={drag} 
-              disabled={isActive} 
+            <TouchableOpacity
+              onPressIn={drag}
+              disabled={isActive}
               style={styles.dragHandle}
-              hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }} 
+              hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
             >
-                 <Ionicons name="reorder-three-outline" size={30} color={theme.colors.grey} />
+              <Ionicons name="reorder-three-outline" size={30} color={theme.colors.grey} />
             </TouchableOpacity>
           ) : (
-            <View style={{width: Platform.OS === 'web' ? 40 : 30, marginLeft: styles.dragHandle.marginLeft as number }} />
+            <View
+              style={{ width: Platform.OS === 'web' ? 40 : 30, marginLeft: styles.dragHandle.marginLeft as number }}
+            />
           )}
         </TouchableOpacity>
       </ScaleDecorator>
     );
   };
-  
-  if (isLoading && !isAddModalVisible && !isSearchingProduct && !isDeleteConfirmModalVisible) { 
+
+  if (isLoading && !isAddModalVisible && !isSearchingProduct && !isDeleteConfirmModalVisible) {
     return (
       <View style={styles.centered}>
         <ActivityIndicator size="large" color={theme.colors.primary} />
-        <Text style={{color: theme.colors.textSecondary, marginTop: theme.spacing['level-2']}}>Đang tải dữ liệu...</Text>
+        <Text style={{ color: theme.colors.textSecondary, marginTop: theme.spacing['level-2'] }}>
+          Đang tải dữ liệu...
+        </Text>
       </View>
     );
   }
@@ -364,39 +375,30 @@ export default function SettingScreen() {
     <View style={styles.container}>
       {userSelectedQuotas.length === 0 && !isLoading ? (
         <View style={styles.centered}>
-            <Text style={styles.emptyText}>Chưa có sản phẩm nào được thêm.</Text>
-            <Text style={styles.emptyText}>Nhấn "Thêm Sản Phẩm Mới" để bắt đầu.</Text>
+          <Text style={styles.emptyText}>Chưa có sản phẩm nào được thêm.</Text>
+          <Text style={styles.emptyText}>Nhấn "Thêm Sản Phẩm Mới" để bắt đầu.</Text>
         </View>
       ) : (
         <DraggableFlatList
           data={userSelectedQuotas}
           renderItem={renderQuotaItem}
-          keyExtractor={(item) => item.product_code} 
+          keyExtractor={item => item.product_code}
           onDragEnd={({ data: reorderedData }) => {
             const updatedDataWithNewZIndex = reorderedData.map((q, index) => ({
               ...q,
-              zindex: index, 
+              zindex: index,
             }));
             setUserSelectedQuotas(updatedDataWithNewZIndex);
           }}
           containerStyle={{ flex: 1, paddingTop: theme.spacing['level-2'] }}
-          ListFooterComponent={<View style={{height: isEditMode ? theme.spacing['level-4'] : 90}}/>}
-          activationDistance={Platform.OS === 'web' ? 5 : 10} 
+          ListFooterComponent={<View style={{ height: isEditMode ? theme.spacing['level-4'] : 90 }} />}
+          activationDistance={Platform.OS === 'web' ? 5 : 10}
         />
       )}
 
-      {!isEditMode && (
-        <Button
-          title="Thêm Sản Phẩm Mới"
-          onPress={handleOpenAddModal} 
-          style={styles.addButton}
-        />
-      )}
+      {!isEditMode && <Button title="Thêm Sản Phẩm Mới" onPress={handleOpenAddModal} style={styles.addButton} />}
 
-      <ModalWrapper
-        visible={isAddModalVisible}
-        onClose={handleCloseAddModal} 
-      >
+      <ModalWrapper visible={isAddModalVisible} onClose={handleCloseAddModal}>
         <View style={styles.customModalHeaderContainer}>
           <Text style={styles.customModalHeaderText}>Thêm Sản Phẩm</Text>
         </View>
@@ -408,22 +410,30 @@ export default function SettingScreen() {
             placeholder="Ví dụ: 5.2"
             autoCapitalize="characters"
             maxLength={20}
-            onSubmitEditing={Keyboard.dismiss} 
+            onSubmitEditing={Keyboard.dismiss}
           />
-          {isSearchingProduct && <ActivityIndicator size="small" color={theme.colors.primary} style={{ marginVertical: theme.spacing['level-2'] }}/>}
+          {isSearchingProduct && (
+            <ActivityIndicator
+              size="small"
+              color={theme.colors.primary}
+              style={{ marginVertical: theme.spacing['level-2'] }}
+            />
+          )}
           {productSearchMessage && (
-            <Text style={[
-              styles.productSearchMessage,
-              productSearchMessageType === 'success' && styles.successText,
-              productSearchMessageType === 'error' && styles.errorTextModal,
-            ]}>
+            <Text
+              style={[
+                styles.productSearchMessage,
+                productSearchMessageType === 'success' && styles.successText,
+                productSearchMessageType === 'error' && styles.errorTextModal,
+              ]}
+            >
               {productSearchMessage}
             </Text>
           )}
           <View style={styles.modalActions}>
             <Button title="Hủy" onPress={handleCloseAddModal} type="secondary" style={styles.modalButton} />
             <Button
-              title={isLoading ? "Đang thêm..." : "Thêm vào danh sách"}
+              title={isLoading ? 'Đang thêm...' : 'Thêm vào danh sách'}
               onPress={handleAddProduct}
               type="primary"
               style={styles.modalButton}
@@ -434,10 +444,7 @@ export default function SettingScreen() {
       </ModalWrapper>
 
       {quotaToDelete && (
-        <ModalWrapper
-          visible={isDeleteConfirmModalVisible}
-          onClose={handleCancelDelete}
-        >
+        <ModalWrapper visible={isDeleteConfirmModalVisible} onClose={handleCancelDelete}>
           <View style={styles.confirmDeleteModalContainer}>
             <Text style={styles.confirmDeleteTitle}>Xác nhận xóa</Text>
             <Text style={styles.confirmDeleteMessage}>
@@ -449,11 +456,11 @@ export default function SettingScreen() {
             </View>
             <View style={styles.modalActions}>
               <Button title="Hủy" onPress={handleCancelDelete} type="secondary" style={styles.modalButton} />
-              <Button 
-                title={isLoading ? "Đang xóa..." : "Xóa"} 
-                onPress={handleConfirmDelete} 
-                type="danger" 
-                style={styles.modalButton} 
+              <Button
+                title={isLoading ? 'Đang xóa...' : 'Xóa'}
+                onPress={handleConfirmDelete}
+                type="danger"
+                style={styles.modalButton}
                 disabled={isLoading}
               />
             </View>
@@ -481,22 +488,22 @@ const styles = StyleSheet.create({
     fontWeight: theme.typography.fontWeight['bold'],
     color: theme.colors.text,
   },
-  modalInnerContent: { 
-     paddingHorizontal: theme.spacing['level-1'], 
+  modalInnerContent: {
+    paddingHorizontal: theme.spacing['level-1'],
   },
-  centered: { 
+  centered: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
     padding: theme.spacing['level-6'],
   },
-  emptyText: { 
+  emptyText: {
     fontSize: theme.typography.fontSize['level-4'],
     color: theme.colors.textSecondary,
     textAlign: 'center',
     marginBottom: theme.spacing['level-2'],
   },
-  itemContainer: { 
+  itemContainer: {
     backgroundColor: theme.colors.cardBackground,
     paddingVertical: theme.spacing['level-4'],
     paddingHorizontal: theme.spacing['level-4'],
@@ -510,50 +517,50 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: theme.colors.borderColor,
   },
-  itemActive: { 
+  itemActive: {
     ...theme.shadow.lg,
     backgroundColor: theme.colors.background1,
     borderColor: theme.colors.primary,
   },
   itemNonEditable: {},
-  itemTextContainer: { 
+  itemTextContainer: {
     flex: 1,
   },
-  itemProductCode: { 
+  itemProductCode: {
     fontSize: theme.typography.fontSize['level-5'],
     fontWeight: theme.typography.fontWeight['bold'],
-    color: theme.colors.primary, 
+    color: theme.colors.primary,
   },
-  itemProductName: { 
+  itemProductName: {
     fontSize: theme.typography.fontSize['level-3'],
     color: theme.colors.textSecondary,
     marginTop: theme.spacing['level-1'],
   },
-  deleteButton: { 
-    paddingHorizontal: theme.spacing['level-2'], 
+  deleteButton: {
+    paddingHorizontal: theme.spacing['level-2'],
     paddingVertical: theme.spacing['level-1'],
-    marginRight: theme.spacing['level-2'], 
+    marginRight: theme.spacing['level-2'],
   },
-  dragHandle: { 
-    paddingHorizontal: theme.spacing['level-2'], 
+  dragHandle: {
+    paddingHorizontal: theme.spacing['level-2'],
     paddingVertical: theme.spacing['level-1'],
-    marginLeft: theme.spacing['level-2'], 
+    marginLeft: theme.spacing['level-2'],
   },
-  addButton: { 
+  addButton: {
     marginHorizontal: theme.spacing['level-6'],
     marginVertical: theme.spacing['level-4'],
   },
-  modalActions: { 
+  modalActions: {
     flexDirection: 'row',
     justifyContent: 'space-around',
     marginTop: theme.spacing['level-6'],
     marginBottom: theme.spacing['level-2'],
   },
-  modalButton: { 
+  modalButton: {
     flex: 1,
     marginHorizontal: theme.spacing['level-2'],
   },
-  productSearchMessage: { 
+  productSearchMessage: {
     fontSize: theme.typography.fontSize['level-3'],
     textAlign: 'center',
     marginVertical: theme.spacing['level-2'],
@@ -561,42 +568,42 @@ const styles = StyleSheet.create({
     borderRadius: theme.borderRadius['level-2'],
     backgroundColor: theme.colors.background1,
   },
-  successText: { 
+  successText: {
     color: theme.colors.success,
   },
-  errorTextModal: { 
+  errorTextModal: {
     color: theme.colors.danger,
   },
-  confirmDeleteModalContainer: { 
+  confirmDeleteModalContainer: {
     alignItems: 'center',
-    padding: theme.spacing['level-2'], 
+    padding: theme.spacing['level-2'],
   },
-  confirmDeleteTitle: { 
+  confirmDeleteTitle: {
     fontSize: theme.typography.fontSize['level-6'],
     fontWeight: theme.typography.fontWeight['bold'],
     color: theme.colors.text,
     marginBottom: theme.spacing['level-4'],
     textAlign: 'center',
   },
-  confirmDeleteMessage: { 
+  confirmDeleteMessage: {
     fontSize: theme.typography.fontSize['level-4'],
     color: theme.colors.textSecondary,
     textAlign: 'center',
-    marginBottom: theme.spacing['level-6'], 
+    marginBottom: theme.spacing['level-6'],
   },
-  confirmDeleteDetails: { 
-    alignSelf: 'stretch', 
+  confirmDeleteDetails: {
+    alignSelf: 'stretch',
     backgroundColor: theme.colors.background1,
     padding: theme.spacing['level-4'],
     borderRadius: theme.borderRadius['level-4'],
     marginBottom: theme.spacing['level-6'],
   },
-  detailText: { 
+  detailText: {
     fontSize: theme.typography.fontSize['level-3'],
     color: theme.colors.text,
     marginBottom: theme.spacing['level-1'],
   },
-  detailTextBold: { 
+  detailTextBold: {
     fontSize: theme.typography.fontSize['level-3'],
     color: theme.colors.text,
     fontWeight: 'bold',

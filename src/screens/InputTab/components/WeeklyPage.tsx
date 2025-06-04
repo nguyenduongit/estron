@@ -49,7 +49,6 @@ const WeeklyPage: React.FC<WeeklyPageProps> = ({ userId, weekData, quotasExist, 
       >
         {weekData.dailyData
           .slice()
-          .reverse()
           .map(day => (
             <DailyCard
               userId={userId}
