@@ -1,10 +1,9 @@
-// src/screens/InputTab/components/WeeklyPage.tsx
 import React from 'react';
-import { View, Text, StyleSheet, ScrollView } from 'react-native';
-import { theme } from '../../../theme'; 
-import { DailyProductionData, ProductionEntry } from '../../../types/data'; 
-import { EstronWeekPeriod, formatDate } from '../../../utils/dateUtils'; 
-import DailyCard from './DailyCard'; 
+import { View, Text, StyleSheet, Platform, ViewStyle } from 'react-native';
+import { theme } from '../../../theme';
+import { DailyProductionData, ProductionEntry } from '../../../types/data';
+import { EstronWeekPeriod, formatDate } from '../../../utils/dateUtils';
+import DailyCard from './DailyCard';
 
 interface ProcessedWeekData {
   weekInfo: EstronWeekPeriod;
@@ -21,9 +20,22 @@ interface WeeklyPageProps {
 }
 
 const WeeklyPage: React.FC<WeeklyPageProps> = ({ userId, weekData, quotasExist, onAddProduction, onEditEntry }) => {
+  
+  // SỬA LỖI: Tạo một đối tượng style riêng cho web để xử lý 'position: sticky'
+  // Dùng 'as any' để TypeScript bỏ qua việc kiểm tra giá trị 'sticky' chỉ dành cho web
+  const stickyHeaderStyle: ViewStyle = Platform.select({
+    web: {
+      position: 'sticky' as any,
+      top: 0,
+      zIndex: 10,
+    },
+    default: {}, // Không áp dụng style đặc biệt cho native
+  });
+
   return (
     <View style={styles.pageStyle}>
-      <View style={styles.weekHeader}>
+      {/* Áp dụng cả style cơ bản và style sticky cho header */}
+      <View style={[styles.weekHeader, stickyHeaderStyle]}>
         <View>
           <Text style={styles.weekName}>{weekData.weekInfo.name}</Text>
           <Text style={styles.weekDateRange}>
@@ -39,14 +51,8 @@ const WeeklyPage: React.FC<WeeklyPageProps> = ({ userId, weekData, quotasExist, 
           </View>
         )}
       </View>
-      <ScrollView
-        showsVerticalScrollIndicator={false}
-        style={{ flex: 1 }}
-        contentContainerStyle={{
-          paddingHorizontal: theme.spacing['level-2'],
-          paddingBottom: theme.spacing['level-8'],
-        }}
-      >
+
+      <View style={styles.cardsContainer}>
         {weekData.dailyData
           .slice()
           .map(day => (
@@ -59,35 +65,36 @@ const WeeklyPage: React.FC<WeeklyPageProps> = ({ userId, weekData, quotasExist, 
               onEditEntry={onEditEntry}
             />
           ))}
-      </ScrollView>
+      </View>
     </View>
   );
 };
 
 const styles = StyleSheet.create({
-  pageStyle: {
-    flex: 1,
-    paddingHorizontal: theme.spacing['level-2'],
-  },
+  pageStyle: {},
   weekHeader: {
     paddingVertical: theme.spacing['level-4'],
-    paddingHorizontal: theme.spacing['level-2'],
-    marginHorizontal: -theme.spacing['level-2'],
+    paddingHorizontal: theme.spacing['level-4'],
     borderBottomWidth: 1,
     borderBottomColor: theme.colors.borderColor,
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    backgroundColor: theme.colors.background1, 
+    backgroundColor: theme.colors.background1,
+    // Đã xóa 'position: sticky' khỏi đây để tránh lỗi
+  },
+  cardsContainer: {
+    paddingHorizontal: theme.spacing['level-2'],
+    paddingBottom: theme.spacing['level-8'],
   },
   weekName: {
     fontSize: theme.typography.fontSize['level-4'],
     fontWeight: theme.typography.fontWeight['bold'],
-    color: theme.colors.primary, 
+    color: theme.colors.primary,
   },
   weekDateRange: {
     fontSize: theme.typography.fontSize['level-2'],
-    color: theme.colors.textSecondary, 
+    color: theme.colors.textSecondary,
   },
   totalWeeklyWorkContainer: {
     flexDirection: 'row',
@@ -100,7 +107,7 @@ const styles = StyleSheet.create({
   totalWeeklyWorkValue: {
     fontSize: theme.typography.fontSize['level-3'],
     fontWeight: theme.typography.fontWeight['bold'],
-    color: theme.colors.success, 
+    color: theme.colors.success,
   },
 });
 

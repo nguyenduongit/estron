@@ -3,6 +3,7 @@
     "name": "estron-production",
     "slug": "estron-production",
     "version": "1.0.0",
+    "scheme": "com.estron.production",
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
     "userInterfaceStyle": "light",
@@ -51,6 +52,9 @@
         "projectId": "5157767b-6f79-483b-b332-30708315f22b"
       }
     },
-    "sdkVersion": "53.0.0"
+    "sdkVersion": "53.0.0",
+    "plugins": [
+      "expo-web-browser"
+    ]
   }
 }
