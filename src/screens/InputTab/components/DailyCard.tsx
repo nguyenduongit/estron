@@ -235,6 +235,8 @@ const styles = StyleSheet.create({
         alignItems: 'center',
         justifyContent: 'flex-end',
         marginRight: theme.spacing['level-3'],
+        borderWidth: 1,
+        borderColor: theme.colors.success,
     },
     headerIcon: {
         marginLeft: theme.spacing['level-2'],
@@ -250,6 +252,7 @@ const styles = StyleSheet.create({
         alignItems: 'center',
         justifyContent: 'flex-end',
         borderWidth: 1,
+        borderColor: theme.colors.danger,
     },
     cardTotalWorkLabel: {
         fontSize: theme.typography.fontSize['level-3'],
