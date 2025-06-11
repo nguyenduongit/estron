@@ -1,4 +1,3 @@
-// src/screens/InputTab/components/AggregatedEntryRow.tsx
 import React, { useState } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
 import Ionicons from '@expo/vector-icons/Ionicons';
@@ -31,8 +30,9 @@ const AggregatedEntryRow: React.FC<AggregatedEntryRowProps> = ({
     }
   };
 
-  const iconName = isDayFullyVerified ? "checkmark-circle" : "remove-circle";
-  const iconColor = isDayFullyVerified ? theme.colors.success : theme.colors.warning;
+  // THAY ĐỔI: Cập nhật logic cho icon và màu sắc
+  const iconName = isDayFullyVerified ? "checkmark-circle" : "checkmark-circle-outline";
+  const iconColor = isDayFullyVerified ? theme.colors.success : theme.colors.grey;
 
   return (
     <View style={styles.container}>

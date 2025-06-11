@@ -1,4 +1,3 @@
-// src/screens/InputTab/components/IndividualEntryDetailRow.tsx
 import React from 'react';
 import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
 import Ionicons from '@expo/vector-icons/Ionicons';
@@ -13,8 +12,10 @@ interface IndividualEntryDetailRowProps {
 
 const IndividualEntryDetailRow: React.FC<IndividualEntryDetailRowProps> = ({ item, disabled, onEdit }) => {
   const displayQuantity = item.quantity ?? 0;
-  const iconName = item.verified === true ? "checkmark-circle-outline" : "remove-circle-outline";
-  const iconColor = item.verified === true ? theme.colors.success : theme.colors.warning;
+  
+  // THAY ĐỔI: Cập nhật logic cho icon và màu sắc để nhất quán
+  const iconName = item.verified === true ? "checkmark-circle" : "checkmark-circle-outline";
+  const iconColor = item.verified === true ? theme.colors.success : theme.colors.grey;
   const showIcon = item.verified !== null && item.verified !== undefined;
 
   return (

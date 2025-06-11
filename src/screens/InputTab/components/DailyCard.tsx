@@ -110,14 +110,14 @@ const DailyCard: React.FC<DailyCardProps> = ({
                         )}
                     </View>
                     {weekHasData && (
-                        <>
+                        <View style={styles.cardTotalWorkContainer}>
                             <Text style={styles.cardTotalWorkLabel}>Tổng công: </Text>
                             <Text style={styles.cardTotalWorkValue}>
                                 {dailyInfo.totalWorkForDay != null
                                     ? dailyInfo.totalWorkForDay.toFixed(2)
                                     : '0.00'}
                             </Text>
-                        </>
+                        </View>
                     )}
                 </View>
             </View>
@@ -244,12 +244,19 @@ const styles = StyleSheet.create({
         fontWeight: theme.typography.fontWeight['bold'],
         color: theme.colors.text,
     },
+    cardTotalWorkContainer: {
+        flex: 1,
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'flex-end',
+    },
     cardTotalWorkLabel: {
         flex: 0.4,
         fontSize: theme.typography.fontSize['level-3'],
         fontStyle: theme.typography.fontStyle['italic'],
         color: theme.colors.text,
         textAlign: 'right',
+        paddingRight: theme.spacing['level-1'],
     },
     cardTotalWorkValue: {
         fontSize: theme.typography.fontSize['level-3'],

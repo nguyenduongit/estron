@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback, useLayoutEffect, lazy, Suspense } from 'react';
-import { View, Text, StyleSheet, ActivityIndicator, Platform } from 'react-native';
+import { View, Text, StyleSheet, ActivityIndicator, Platform, ScrollView } from 'react-native';
 import { Swiper, SwiperSlide } from 'swiper/react';
 import 'swiper/css';
 import type { StackNavigationProp } from '@react-navigation/stack';
@@ -39,21 +39,14 @@ import AlertModal, { AlertButtonType } from '../../components/common/AlertModal'
 import SelectProductModal from './components/SelectProductModal';
 import EditEntryModal from './components/EditEntryModal';
 
-// THAY ĐỔI: Thêm một đoạn mã chỉ chạy trên web để chèn CSS ẩn thanh cuộn.
-// Việc này đảm bảo nó chỉ được thêm một lần duy nhất.
 if (Platform.OS === 'web') {
   const styleId = 'hide-scrollbar-style';
   if (!document.getElementById(styleId)) {
     const style = document.createElement('style');
     style.id = styleId;
     style.textContent = `
-      .scrollable-slide::-webkit-scrollbar {
-        display: none;
-      }
-      .scrollable-slide {
-        -ms-overflow-style: none;
-        scrollbar-width: none;
-      }
+      .scrollable-slide::-webkit-scrollbar { display: none; }
+      .scrollable-slide { -ms-overflow-style: none; scrollbar-width: none; }
     `;
     document.head.appendChild(style);
   }
@@ -71,7 +64,7 @@ export interface ProcessedWeekData {
 
 export default function ProductScreen() {
     const navigation = useNavigation<ProductScreenNavigationProp>();
-    // ...Toàn bộ state và các hàm xử lý logic vẫn giữ nguyên...
+
     const [isLoading, setIsLoading] = useState(true);
     const [userSelectedQuotas, setUserSelectedQuotas] = useState<UserSelectedQuota[]>([]);
     const [userProfile, setUserProfile] = useState<Profile | null>(null);
@@ -180,6 +173,55 @@ export default function ProductScreen() {
 
     useLayoutEffect(() => { if (estronWeekInfo) { navigation.setOptions({ title: `Sản lượng tháng ${estronWeekInfo.estronMonth.estronMonth}` }); } else { navigation.setOptions({ title: 'Sản Lượng Estron' }); } }, [navigation, estronWeekInfo]);
 
+    // THAY ĐỔI: Thêm useEffect để lắng nghe sự kiện từ Supabase
+    useEffect(() => {
+        if (!userId) {
+            return;
+        }
+
+        // Tạo kênh lắng nghe cho bảng 'entries'
+        const entriesChannel = supabase
+            .channel(`public:entries:user_id=eq.${userId}`)
+            .on(
+                'postgres_changes',
+                {
+                    event: '*', // Lắng nghe mọi sự kiện INSERT, UPDATE, DELETE
+                    schema: 'public',
+                    table: 'entries',
+                    filter: `user_id=eq.${userId}`, // Chỉ lắng nghe thay đổi của user hiện tại
+                },
+                (payload) => {
+                    console.log('Entries table change received!', payload);
+                    loadInitialData(); // Tải lại dữ liệu khi có thay đổi
+                }
+            )
+            .subscribe();
+
+        // Tạo kênh lắng nghe cho bảng 'additional'
+        const additionalChannel = supabase
+            .channel(`public:additional:user_id=eq.${userId}`)
+            .on(
+                'postgres_changes',
+                {
+                    event: '*',
+                    schema: 'public',
+                    table: 'additional',
+                    filter: `user_id=eq.${userId}`,
+                },
+                (payload) => {
+                    console.log('Additional table change received!', payload);
+                    loadInitialData();
+                }
+            )
+            .subscribe();
+
+        // Hàm dọn dẹp: Hủy đăng ký lắng nghe khi component bị unmount
+        return () => {
+            supabase.removeChannel(entriesChannel);
+            supabase.removeChannel(additionalChannel);
+        };
+    }, [userId, loadInitialData]); // Chạy lại khi userId hoặc hàm loadInitialData thay đổi
+
     const handleSelectProduct = async (selectedUserQuota: UserSelectedQuota) => {
         setIsProductModalVisible(false);
         if (!userProfile || !userProfile.salary_level) { showAlert('Không tìm thấy thông tin bậc lương người dùng.'); return; }
@@ -216,7 +258,6 @@ export default function ProductScreen() {
         },},]);
     };
 
-    // ...Các hàm render trạng thái loading/empty...
     if (isLoading && !userId) { return ( <View style={styles.centered}><ActivityIndicator size="large" color={theme.colors.primary} /><Text style={{ color: theme.colors.textSecondary, marginTop: theme.spacing['level-2'] }}>Đang tải thông tin người dùng...</Text></View> ); }
     if (isLoading && userId && processedWeeksData.length === 0) { return ( <View style={styles.centered}><ActivityIndicator size="large" color={theme.colors.primary} /><Text style={{ color: theme.colors.textSecondary, marginTop: theme.spacing['level-2'] }}>Đang tải dữ liệu...</Text></View> ); }
     if (!userId && !isLoading) { return ( <View style={styles.centered}><Text style={styles.emptyText}>Không thể tải dữ liệu do chưa xác thực người dùng.</Text><Button title="Thử Lại" onPress={() => { /* ... */ }} style={{ marginTop: theme.spacing['level-4'] }} /></View> ); }
@@ -228,29 +269,28 @@ export default function ProductScreen() {
         <View style={styles.container}>
             {userId && processedWeeksData.length > 0 &&
                 (Platform.OS === 'web' ? (
-                <Swiper
-                    style={styles.pagerView}
-                    initialSlide={currentPage}
-                    onSlideChange={swiper => setCurrentPage(swiper.activeIndex)}
-                    key={pagerKey}
-                >
-                    {processedWeeksData.map(weekData => (
-                    <SwiperSlide
-                        key={weekData.weekInfo.name + weekData.weekInfo.startDate.toISOString()}
-                        // THAY ĐỔI: Gán className và style để biến slide thành container cuộn
-                        className="scrollable-slide"
-                        style={{ height: '100%', overflow: 'auto' }}
+                    <Swiper
+                        style={styles.pagerView}
+                        initialSlide={currentPage}
+                        onSlideChange={swiper => setCurrentPage(swiper.activeIndex)}
+                        key={pagerKey}
                     >
-                        <WeeklyPage
-                            userId={userId}
-                            weekData={weekData}
-                            quotasExist={userSelectedQuotas.length > 0}
-                            onAddProduction={openProductModal}
-                            onEditEntry={handleOpenEditModal}
-                        />
-                    </SwiperSlide>
-                    ))}
-                </Swiper>
+                        {processedWeeksData.map(weekData => (
+                        <SwiperSlide
+                            key={weekData.weekInfo.name + weekData.weekInfo.startDate.toISOString()}
+                            className="scrollable-slide"
+                            style={{ height: '100%', overflow: 'auto' }}
+                        >
+                            <WeeklyPage
+                                userId={userId}
+                                weekData={weekData}
+                                quotasExist={userSelectedQuotas.length > 0}
+                                onAddProduction={openProductModal}
+                                onEditEntry={handleOpenEditModal}
+                            />
+                        </SwiperSlide>
+                        ))}
+                    </Swiper>
                 ) : (
                 PagerView && (
                     <Suspense fallback={<ActivityIndicator size="large" color={theme.colors.primary} />}>
@@ -262,13 +302,15 @@ export default function ProductScreen() {
                     >
                         {processedWeeksData.map((weekData, index) => (
                         <View key={index} style={styles.fullFlex}>
-                            <WeeklyPage
-                                userId={userId}
-                                weekData={weekData}
-                                quotasExist={userSelectedQuotas.length > 0}
-                                onAddProduction={openProductModal}
-                                onEditEntry={handleOpenEditModal}
-                            />
+                            <ScrollView showsVerticalScrollIndicator={false}>
+                                <WeeklyPage
+                                    userId={userId}
+                                    weekData={weekData}
+                                    quotasExist={userSelectedQuotas.length > 0}
+                                    onAddProduction={openProductModal}
+                                    onEditEntry={handleOpenEditModal}
+                                />
+                            </ScrollView>
                         </View>
                         ))}
                     </PagerView>

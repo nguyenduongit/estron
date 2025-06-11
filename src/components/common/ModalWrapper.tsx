@@ -1,7 +1,6 @@
-// components/common/ModalWrapper.tsx
-import React, { useState, useEffect } from "react";
-import { Modal, View, StyleSheet, TouchableWithoutFeedback, Text, TouchableOpacity, Platform, Dimensions, ViewStyle } from "react-native";
-import { theme } from "../../theme"; //
+import React from "react";
+import { Modal, View, StyleSheet, TouchableWithoutFeedback, Text, TouchableOpacity } from "react-native";
+import { theme } from "../../theme";
 import Ionicons from "@expo/vector-icons/Ionicons";
 
 interface ModalWrapperProps {
@@ -11,70 +10,33 @@ interface ModalWrapperProps {
   title?: string;
 }
 
-const ORIGINAL_MAX_WIDTH = 400;
-
 const ModalWrapper: React.FC<ModalWrapperProps> = ({ visible, onClose, children, title }) => {
-  const [dynamicMaxWidth, setDynamicMaxWidth] = useState(ORIGINAL_MAX_WIDTH);
-  const [dynamicOverlayStyle, setDynamicOverlayStyle] = useState<ViewStyle>(() => styles.overlayBase);
-
-  useEffect(() => {
-    const updateModalStyles = () => {
-      const screenWidth = Dimensions.get('window').width;
-      const screenHeight = Dimensions.get('window').height;
-
-      if (Platform.OS === 'web') {
-        const appVisibleWidth = screenHeight / 2;
-        const calculatedModalContentMaxWidth = Math.min(appVisibleWidth * 0.90, ORIGINAL_MAX_WIDTH);
-        setDynamicMaxWidth(calculatedModalContentMaxWidth < 100 ? appVisibleWidth * 0.9 : calculatedModalContentMaxWidth);
-
-        setDynamicOverlayStyle({
-          ...styles.overlayBase,
-          width: appVisibleWidth,
-          marginHorizontal: 'auto',
-        });
-
-      } else {
-        setDynamicMaxWidth(Math.min(screenWidth , ORIGINAL_MAX_WIDTH));
-        setDynamicOverlayStyle(styles.overlayBase);
-      }
-    };
-
-    updateModalStyles();
-    const subscription = Dimensions.addEventListener('change', updateModalStyles);
-    return () => {
-      subscription?.remove();
-    };
-  }, []);
-
-  const modalContentStyle: ViewStyle = {
-    ...styles.modalContentBase,
-    maxWidth: dynamicMaxWidth,
-  };
-
   return (
     <Modal
-      animationType="slide"
+      animationType="fade" // 'fade' cho hiệu ứng mượt mà và ổn định hơn
       transparent={true}
       visible={visible}
       onRequestClose={onClose}
     >
+      {/* Lớp phủ ngoài cùng, bấm vào sẽ đóng modal */}
       <TouchableWithoutFeedback onPress={onClose} accessible={false}>
-        <View style={styles.modalRootContainerWeb}>
-          <View style={dynamicOverlayStyle}>
-            <TouchableWithoutFeedback accessible={false}>
-              <View style={modalContentStyle}>
-                {title && (
-                  <View style={styles.header}>
-                    <Text style={styles.title}>{title}</Text>
-                    <TouchableOpacity onPress={onClose} style={styles.closeButton}>
-                      <Ionicons name="close-circle" size={28} color={theme.colors.textSecondary} />
-                    </TouchableOpacity>
-                  </View>
-                )}
-                {children}
-              </View>
-            </TouchableWithoutFeedback>
-          </View>
+        <View style={styles.overlay}>
+          {/* Container chứa nội dung của modal, bấm vào không bị đóng */}
+          <TouchableWithoutFeedback accessible={false}>
+            <View style={styles.modalContent}>
+              {/* Tiêu đề (tùy chọn) */}
+              {title && (
+                <View style={styles.header}>
+                  <Text style={styles.title}>{title}</Text>
+                  <TouchableOpacity onPress={onClose} style={styles.closeButton}>
+                    <Ionicons name="close-circle" size={28} color={theme.colors.textSecondary} />
+                  </TouchableOpacity>
+                </View>
+              )}
+              {/* Nội dung chính của modal được truyền vào */}
+              {children}
+            </View>
+          </TouchableWithoutFeedback>
         </View>
       </TouchableWithoutFeedback>
     </Modal>
@@ -82,28 +44,25 @@ const ModalWrapper: React.FC<ModalWrapperProps> = ({ visible, onClose, children,
 };
 
 const styles = StyleSheet.create({
-  modalRootContainerWeb: {
+  // Lớp phủ màu đen mờ bao trọn màn hình
+  overlay: {
     flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  overlayBase: {
     backgroundColor: "rgba(0, 0, 0, 0.6)",
     justifyContent: "center",
     alignItems: "center",
-    height: '100%',
-    width: Platform.OS === 'web' ? undefined : '100%',
-    padding: Platform.OS === 'web' ? 0 : undefined,
-    },
-    modalContentBase: {
+    // Thêm padding để modal không bị dính sát vào cạnh màn hình
+    padding: theme.spacing['level-4'],
+  },
+  // Khung chứa nội dung chính của modal
+  modalContent: {
     width: "100%",
+    maxWidth: 420, // Chiều rộng tối đa để không quá lớn trên màn hình desktop
     backgroundColor: theme.colors.cardBackground,
     borderRadius: theme.borderRadius['level-6'],
-    padding: theme.spacing['level-2'],
+    padding: theme.spacing['level-5'], // Padding cho nội dung bên trong
     ...theme.shadow.lg,
-    marginHorizontal:theme.spacing['level-8'],
-    },
-    header: {
+  },
+  header: {
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
@@ -111,14 +70,14 @@ const styles = StyleSheet.create({
     borderBottomWidth: 1,
     borderBottomColor: theme.colors.borderColor,
     paddingBottom: theme.spacing['level-2'],
-    },
-    title: {
+  },
+  title: {
     fontSize: theme.typography.fontSize['level-6'],
     fontWeight: theme.typography.fontWeight['bold'],
     color: theme.colors.text,
   },
   closeButton: {
-    padding: theme.spacing['level-1'], 
+    padding: theme.spacing['level-1'],
   },
 });
 

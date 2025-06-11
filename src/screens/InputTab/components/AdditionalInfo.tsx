@@ -1,15 +1,18 @@
-// src/screens/InputTab/components/AdditionalInfo.tsx
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, TextInput as RNTextInput, Alert, ActivityIndicator, Platform } from 'react-native';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { theme } from '../../../theme';
 import { DailySupplementaryData } from '../../../types/data';
 import {
-  saveDailySupplementaryData,
-  getSupplementaryDataByDate
+  saveDailySupplementaryData
 } from '../../../services/storage';
 
-const HOUR_OPTIONS = [1, 2, 3, 4, 8];
+// THAY ĐỔI: Tách các tùy chọn cho Nghỉ và Tăng ca
+const LEAVE_OPTIONS = [
+  { label: 'Nữa ngày', value: 4 },
+  { label: 'Cả ngày', value: 8 },
+];
+const OVERTIME_OPTIONS = [1, 2, 3, 4, 8];
 
 interface AdditionalInfoProps {
   userId: string;
@@ -26,24 +29,19 @@ const AdditionalInfo: React.FC<AdditionalInfoProps> = ({ userId, date, initialDa
   const [currentOvertimeHours, setCurrentOvertimeHours] = useState<number | null | undefined>(undefined);
   const [currentMeetingMinutes, setCurrentMeetingMinutes] = useState<string>('');
   
-  // THAY ĐỔI: Thêm state cho thông báo và ref cho timeout
   const [warningMessage, setWarningMessage] = useState<string | null>(null);
   const warningTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
-  // THAY ĐỔI: Hàm hiển thị thông báo mới
   const showWarningMessage = (message: string) => {
-    // Xóa timeout cũ nếu có
     if (warningTimeoutRef.current) {
       clearTimeout(warningTimeoutRef.current);
     }
     setWarningMessage(message);
-    // Đặt timeout mới để xóa thông báo sau 3 giây
     warningTimeoutRef.current = setTimeout(() => {
       setWarningMessage(null);
     }, 3000);
   };
 
-  // THAY ĐỔI: Dọn dẹp timeout khi component unmount
   useEffect(() => {
     return () => {
       if (warningTimeoutRef.current) {
@@ -51,7 +49,6 @@ const AdditionalInfo: React.FC<AdditionalInfoProps> = ({ userId, date, initialDa
       }
     };
   }, []);
-
 
   useEffect(() => {
     setIsLoading(true);
@@ -72,7 +69,6 @@ const AdditionalInfo: React.FC<AdditionalInfoProps> = ({ userId, date, initialDa
     value: number | string | null,
     options?: { resetOvertimeAndMeeting?: boolean, resetLeave?: boolean }
   ) => {
-    // ... (logic hàm này giữ nguyên)
     if (!userId) {
         Alert.alert("Lỗi", "Không tìm thấy thông tin người dùng để lưu.");
         return;
@@ -98,7 +94,6 @@ const AdditionalInfo: React.FC<AdditionalInfoProps> = ({ userId, date, initialDa
         : (options?.resetOvertimeAndMeeting ? null : (currentMeetingMinutes === '' ? null : Number(currentMeetingMinutes)));
     
     dataToSave.meetingMinutes = meetingVal === undefined || isNaN(meetingVal as number) ? null : meetingVal;
-
 
     if (dataToSave.leaveHours === undefined) dataToSave.leaveHours = null;
     if (dataToSave.overtimeHours === undefined) dataToSave.overtimeHours = null;
@@ -172,38 +167,40 @@ const AdditionalInfo: React.FC<AdditionalInfoProps> = ({ userId, date, initialDa
 
   return (
     <View style={styles.additionalSection}>
-      {/* THAY ĐỔI: Thêm dòng thông báo */}
       {warningMessage && (
         <Text style={styles.warningText}>{warningMessage}</Text>
       )}
 
-      {/* Nghỉ */}
+      {/* THAY ĐỔI: Mục Nghỉ */}
       <View style={styles.additionalRow}>
         <Text style={[styles.additionalLabel, isLeaveDisabled && styles.disabledText]}>Nghỉ:</Text>
         <View style={styles.optionsContainer}>
-          {HOUR_OPTIONS.map(hours => {
-            const isSelected = currentLeaveHours === hours;
-            const isDisabledByOtherFullDayLeave = isFullDayLeave && hours !== 8;
+          {LEAVE_OPTIONS.map(option => {
+            const isSelected = currentLeaveHours === option.value;
+            // Chỉ vô hiệu hóa nút "Nữa ngày" (4h) nếu nút "Cả ngày" (8h) ĐANG được chọn
+            const isDisabledByFullDay = isFullDayLeave && !isSelected;
 
             return (
               <TouchableOpacity
-                key={`leave-${hours}`}
+                key={`leave-${option.value}`}
                 style={[
                   styles.hourOptionButton,
-                  isSelected && hours === 8 && styles.hourOptionSelectedFullDayLeave,
-                  isSelected && hours !== 8 && styles.hourOptionSelected,
-                  (isDisabledByOtherFullDayLeave || isLeaveDisabled) && styles.disabledButton,
+                  styles.leaveOptionButton, // Style mới để các nút rộng hơn
+                  isSelected && option.value === 8 && styles.hourOptionSelectedFullDayLeave,
+                  isSelected && option.value !== 8 && styles.hourOptionSelected,
+                  (isDisabledByFullDay || isLeaveDisabled) && styles.disabledButton,
                 ]}
-                onPress={() => handleHourOptionPress('leaveHours', hours)}
+                onPress={() => handleHourOptionPress('leaveHours', option.value)}
+                disabled={isDisabledByFullDay || isLeaveDisabled}
               >
                 <Text
                   style={[
                     styles.hourOptionText,
-                    isSelected && (hours === 8 ? styles.hourOptionSelectedFullDayLeaveText : styles.hourOptionSelectedText),
-                    (isDisabledByOtherFullDayLeave || isLeaveDisabled) && styles.disabledText,
+                    isSelected && (option.value === 8 ? styles.hourOptionSelectedFullDayLeaveText : styles.hourOptionSelectedText),
+                    (isDisabledByFullDay || isLeaveDisabled) && styles.disabledText,
                   ]}
                 >
-                  {`${hours}h`}
+                  {option.label}
                 </Text>
               </TouchableOpacity>
             );
@@ -211,11 +208,11 @@ const AdditionalInfo: React.FC<AdditionalInfoProps> = ({ userId, date, initialDa
         </View>
       </View>
 
-      {/* Tăng ca */}
+      {/* Mục Tăng ca giữ nguyên */}
       <View style={styles.additionalRow}>
         <Text style={[styles.additionalLabel, isOvertimeDisabled && styles.disabledText]}>Tăng ca:</Text>
         <View style={styles.optionsContainer}>
-          {HOUR_OPTIONS.map(hours => (
+          {OVERTIME_OPTIONS.map(hours => (
             <TouchableOpacity
               key={`overtime-${hours}`}
               style={[
@@ -224,6 +221,7 @@ const AdditionalInfo: React.FC<AdditionalInfoProps> = ({ userId, date, initialDa
                 isOvertimeDisabled && styles.disabledButton,
               ]}
               onPress={() => handleHourOptionPress('overtimeHours', hours)}
+              disabled={isOvertimeDisabled}
             >
               <Text
                 style={[
@@ -239,7 +237,7 @@ const AdditionalInfo: React.FC<AdditionalInfoProps> = ({ userId, date, initialDa
         </View>
       </View>
 
-      {/* Họp/Đào tạo */}
+      {/* Mục Họp/Đào tạo giữ nguyên */}
       <TouchableOpacity
         activeOpacity={1}
         onPress={() => {
@@ -273,13 +271,12 @@ const AdditionalInfo: React.FC<AdditionalInfoProps> = ({ userId, date, initialDa
 const styles = StyleSheet.create({
   additionalSection: {
     paddingHorizontal: theme.spacing['level-4'],
-    paddingTop: theme.spacing['level-2'], // Giảm padding top một chút để cân đối
+    paddingTop: theme.spacing['level-2'],
     paddingBottom: theme.spacing['level-2'],
     borderTopWidth: 1,
     borderTopColor: theme.colors.borderColor,
     backgroundColor: theme.colors.cardBackground,
   },
-  // THAY ĐỔI: Thêm style cho dòng thông báo
   warningText: {
     color: theme.colors.danger,
     fontSize: theme.typography.fontSize['level-2'],
@@ -308,13 +305,19 @@ const styles = StyleSheet.create({
   hourOptionButton: {
     height: 28,
     minWidth: 40,
-    paddingHorizontal: theme.spacing['level-2'],
     paddingVertical: theme.spacing['level-1'],
     borderRadius: theme.borderRadius['level-2'],
     borderColor: theme.colors.primary,
     alignItems: 'center',
     justifyContent: 'center',
     borderWidth: 1,
+    paddingHorizontal: theme.spacing['level-1'],
+    marginHorizontal: 2,
+  },
+  // THAY ĐỔI: Style mới cho các nút Nghỉ để chúng rộng hơn
+  leaveOptionButton: {
+      flex: 1, // Cho phép các nút co giãn đều nhau
+      paddingHorizontal: theme.spacing['level-2'],
   },
   hourOptionSelected: {
     backgroundColor: theme.colors.primary,
@@ -326,6 +329,7 @@ const styles = StyleSheet.create({
   hourOptionText: {
     fontSize: theme.typography.fontSize['level-2'],
     color: theme.colors.primary,
+    fontWeight: '500',
   },
   hourOptionSelectedText: {
     color: theme.colors.textOnPrimary,
@@ -359,6 +363,8 @@ const styles = StyleSheet.create({
   },
   disabledButton: {
     opacity: 0.6,
+    backgroundColor: theme.colors.darkGrey,
+    borderColor: theme.colors.grey,
   },
   disabledText: {
     color: theme.colors.grey,

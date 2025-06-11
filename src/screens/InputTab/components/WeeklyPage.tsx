@@ -20,7 +20,6 @@ interface WeeklyPageProps {
 }
 
 const WeeklyPage: React.FC<WeeklyPageProps> = ({ userId, weekData, quotasExist, onAddProduction, onEditEntry }) => {
-  
   // SỬA LỖI: Tạo một đối tượng style riêng cho web để xử lý 'position: sticky'
   // Dùng 'as any' để TypeScript bỏ qua việc kiểm tra giá trị 'sticky' chỉ dành cho web
   const stickyHeaderStyle: ViewStyle = Platform.select({
@@ -44,7 +43,7 @@ const WeeklyPage: React.FC<WeeklyPageProps> = ({ userId, weekData, quotasExist, 
         </View>
         {quotasExist && (
           <View style={styles.totalWeeklyWorkContainer}>
-            <Text style={styles.totalWeeklyWorkLabel}>Tổng công tuần: </Text>
+            <Text style={styles.totalWeeklyWorkLabel}>Tổng công tuần:</Text>
             <Text style={styles.totalWeeklyWorkValue}>
               {weekData.totalWeeklyWork != null ? weekData.totalWeeklyWork.toLocaleString() : '0'}
             </Text>
@@ -53,18 +52,16 @@ const WeeklyPage: React.FC<WeeklyPageProps> = ({ userId, weekData, quotasExist, 
       </View>
 
       <View style={styles.cardsContainer}>
-        {weekData.dailyData
-          .slice()
-          .map(day => (
-            <DailyCard
-              userId={userId}
-              key={day.date}
-              dailyInfo={day}
-              weekHasData={quotasExist}
-              onAddProduction={onAddProduction}
-              onEditEntry={onEditEntry}
-            />
-          ))}
+        {weekData.dailyData.slice().map(day => (
+          <DailyCard
+            userId={userId}
+            key={day.date}
+            dailyInfo={day}
+            weekHasData={quotasExist}
+            onAddProduction={onAddProduction}
+            onEditEntry={onEditEntry}
+          />
+        ))}
       </View>
     </View>
   );
@@ -103,6 +100,7 @@ const styles = StyleSheet.create({
   totalWeeklyWorkLabel: {
     fontSize: theme.typography.fontSize['level-3'],
     color: theme.colors.text,
+    paddingRight: theme.spacing['level-1'],
   },
   totalWeeklyWorkValue: {
     fontSize: theme.typography.fontSize['level-3'],
