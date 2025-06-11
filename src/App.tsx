@@ -11,7 +11,6 @@ const WEB_MAX_WIDTH = 450;
 export default function App() {
   const { height } = useWindowDimensions();
 
-  // Tạo một style động cho web wrapper để xử lý maxHeight
   const webAppWrapperStyle = Platform.OS === 'web'
     ? { maxHeight: height  }
     : {};

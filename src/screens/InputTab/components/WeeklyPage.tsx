@@ -19,7 +19,13 @@ interface WeeklyPageProps {
   onEditEntry: (entry: ProductionEntry) => void;
 }
 
-const WeeklyPage: React.FC<WeeklyPageProps> = ({ userId, weekData, quotasExist, onAddProduction, onEditEntry }) => {
+const WeeklyPage: React.FC<WeeklyPageProps> = ({
+  userId,
+  weekData,
+  quotasExist,
+  onAddProduction,
+  onEditEntry,
+}) => {
   // SỬA LỖI: Tạo một đối tượng style riêng cho web để xử lý 'position: sticky'
   // Dùng 'as any' để TypeScript bỏ qua việc kiểm tra giá trị 'sticky' chỉ dành cho web
   const stickyHeaderStyle: ViewStyle = Platform.select({
@@ -33,9 +39,8 @@ const WeeklyPage: React.FC<WeeklyPageProps> = ({ userId, weekData, quotasExist, 
 
   return (
     <View style={styles.pageStyle}>
-      {/* Áp dụng cả style cơ bản và style sticky cho header */}
       <View style={[styles.weekHeader, stickyHeaderStyle]}>
-        <View>
+        <View style={styles.weekInfoRow}>
           <Text style={styles.weekName}>{weekData.weekInfo.name}</Text>
           <Text style={styles.weekDateRange}>
             ({formatDate(weekData.weekInfo.startDate, 'dd/MM')} - {formatDate(weekData.weekInfo.endDate, 'dd/MM')})
@@ -72,26 +77,33 @@ const styles = StyleSheet.create({
   weekHeader: {
     paddingVertical: theme.spacing['level-4'],
     paddingHorizontal: theme.spacing['level-4'],
+    margin: theme.spacing['level-2'],
     borderBottomWidth: 1,
     borderBottomColor: theme.colors.borderColor,
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    backgroundColor: theme.colors.background1,
-    // Đã xóa 'position: sticky' khỏi đây để tránh lỗi
+    backgroundColor: theme.colors.background2,
+    borderRadius: theme.borderRadius['round'],
   },
-  cardsContainer: {
-    paddingHorizontal: theme.spacing['level-2'],
-    paddingBottom: theme.spacing['level-8'],
+  weekInfoRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    flexWrap: 'wrap',
   },
   weekName: {
     fontSize: theme.typography.fontSize['level-4'],
     fontWeight: theme.typography.fontWeight['bold'],
     color: theme.colors.primary,
+    marginRight: theme.spacing['level-2'],
   },
   weekDateRange: {
     fontSize: theme.typography.fontSize['level-2'],
     color: theme.colors.textSecondary,
+  },
+  cardsContainer: {
+    paddingHorizontal: theme.spacing['level-2'],
+    paddingBottom: theme.spacing['level-8'],
   },
   totalWeeklyWorkContainer: {
     flexDirection: 'row',
