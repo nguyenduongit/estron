@@ -92,7 +92,7 @@ export default function AppNavigator() {
         tabBarInactiveTintColor: theme.colors.textSecondary, 
         headerShown: false, 
         tabBarStyle: {
-          backgroundColor: theme.colors.background1, 
+          backgroundColor: theme.colors.background2, 
           borderTopColor: theme.colors.borderColor, 
         }
       })}

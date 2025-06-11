@@ -9,6 +9,7 @@ import {
 import 'react-native-get-random-values';
 import { supabase } from './supabase';
 import { Alert } from 'react-native';
+import { formatToYYYYMMDD } from '../utils/dateUtils'; // Thêm import cần thiết
 
 export const getQuotaSettingByProductCode = async (
     productCode: string
@@ -234,23 +235,21 @@ export const addProductionBoxEntry = async (
         return null;
     }
 
-    // Tạo object để insert, các trường text sẽ là string hoặc null
     const dataToInsert: {
         user_id: string;
         product_code: string;
         date: string;
         quantity?: number | null;
-        po?: string | null; // Kiểu string
-        box?: string | null; // Kiểu string
-        batch?: string | null; // Kiểu string
+        po?: string | null;
+        box?: string | null;
+        batch?: string | null;
     } = {
         user_id,
         product_code,
         date,
     };
 
-    if (quantity !== undefined) dataToInsert.quantity = quantity; // quantity vẫn là number | null
-    // Đối với các trường text, nếu giá trị là undefined thì không thêm, nếu là string (kể cả rỗng) thì thêm
+    if (quantity !== undefined) dataToInsert.quantity = quantity;
     if (po !== undefined) dataToInsert.po = po;
     if (box !== undefined) dataToInsert.box = box;
     if (batch !== undefined) dataToInsert.batch = batch;
@@ -270,7 +269,7 @@ export const addProductionBoxEntry = async (
             );
             return null;
         }
-        return data as ProductionEntry; // ProductionEntry đã được cập nhật với kiểu string cho po, box, batch
+        return data as ProductionEntry;
     } catch (e: any) {
         console.error('[Supabase] Exception khi thêm hộp sản lượng mới:', e);
         Alert.alert(
@@ -365,8 +364,6 @@ export const deleteProductionEntry = async (entryId: string): Promise<boolean> =
     }
 };
 
-// --- Daily Supplementary Data Management (Nghỉ, Tăng ca, Họp) - SUPABASE ---
-// (Giữ nguyên các hàm getSupplementaryDataByDate, saveDailySupplementaryData, getSupplementaryDataByDateRange)
 export const getSupplementaryDataByDate = async (
     userId: string,
     date: string
@@ -374,20 +371,20 @@ export const getSupplementaryDataByDate = async (
     if (!userId) {
         console.error('[Supabase] getSupplementaryDataByDate: userId không được cung cấp.');
         return null;
-    } //
+    }
     try {
         const { data, error } = await supabase
             .from('additional')
             .select(
                 'date, leave, overtime, meeting, leave_verified, overtime_verified, meeting_verified'
             )
-            .eq('user_id', userId) //
-            .eq('date', date) //
-            .maybeSingle(); //
+            .eq('user_id', userId)
+            .eq('date', date)
+            .maybeSingle();
         if (error) {
             console.error('[Supabase] Lỗi khi lấy dữ liệu phụ trợ theo ngày:', error);
             return null;
-        } //
+        }
         if (data) {
             return {
                 date: data.date,
@@ -403,7 +400,7 @@ export const getSupplementaryDataByDate = async (
     } catch (e) {
         console.error('[Supabase] Exception khi lấy dữ liệu phụ trợ theo ngày:', e);
         return null;
-    } //
+    }
 };
 
 export const saveDailySupplementaryData = async (
@@ -414,28 +411,28 @@ export const saveDailySupplementaryData = async (
         console.error('[Supabase] saveDailySupplementaryData: userId không được cung cấp.');
         Alert.alert('Lỗi', 'Không thể xác định người dùng để lưu dữ liệu.');
         return null;
-    } //
-    const { date, leaveHours, overtimeHours, meetingMinutes } = entryToUpdate; //
+    }
+    const { date, leaveHours, overtimeHours, meetingMinutes } = entryToUpdate;
     const dataToUpsert = {
         user_id: userId,
         date: date,
         leave: leaveHours === undefined ? null : leaveHours,
         overtime: overtimeHours === undefined ? null : overtimeHours,
         meeting: meetingMinutes === undefined ? null : meetingMinutes,
-    }; //
+    };
     try {
         const { data, error } = await supabase
             .from('additional')
-            .upsert(dataToUpsert, { onConflict: 'user_id, date' }) //
+            .upsert(dataToUpsert, { onConflict: 'user_id, date' })
             .select(
                 'date, leave, overtime, meeting, leave_verified, overtime_verified, meeting_verified'
-            ) //
-            .single(); //
+            )
+            .single();
         if (error) {
             console.error('[Supabase] Lỗi khi upsert dữ liệu phụ trợ:', error.message);
             Alert.alert('Lỗi Lưu Trữ', `Không thể lưu dữ liệu phụ trợ: ${error.message}`);
             return null;
-        } //
+        }
         if (data) {
             return {
                 date: data.date,
@@ -452,7 +449,7 @@ export const saveDailySupplementaryData = async (
         console.error('[Supabase] Exception khi upsert dữ liệu phụ trợ:', e.message);
         Alert.alert('Lỗi Hệ Thống', `Có lỗi không mong muốn xảy ra: ${e.message}`);
         return null;
-    } //
+    }
 };
 
 export const getSupplementaryDataByDateRange = async (
@@ -463,24 +460,24 @@ export const getSupplementaryDataByDateRange = async (
     if (!userId) {
         console.error('[Supabase] getSupplementaryDataByDateRange: userId không được cung cấp.');
         return [];
-    } //
+    }
     try {
         const { data, error } = await supabase
             .from('additional')
             .select(
                 'date, leave, overtime, meeting, leave_verified, overtime_verified, meeting_verified'
             )
-            .eq('user_id', userId) //
-            .gte('date', startDate) //
-            .lte('date', endDate) //
-            .order('date', { ascending: true }); //
+            .eq('user_id', userId)
+            .gte('date', startDate)
+            .lte('date', endDate)
+            .order('date', { ascending: true });
         if (error) {
             console.error('[Supabase] Lỗi khi lấy dữ liệu phụ trợ theo khoảng ngày:', error);
             return [];
-        } //
+        }
         if (!data) {
             return [];
-        } //
+        }
         return data.map(item => ({
             date: item.date,
             leaveHours: item.leave,
@@ -493,10 +490,9 @@ export const getSupplementaryDataByDateRange = async (
     } catch (e) {
         console.error('[Supabase] Exception khi lấy dữ liệu phụ trợ theo khoảng ngày:', e);
         return [];
-    } //
+    }
 };
 
-// --- Tiện ích ---
 export const clearAllLocalData = async () => {
     try {
         console.log(
@@ -529,8 +525,6 @@ export const updateProductionEntryById = async (
     }
 
     const dataToUpdate: typeof entryData = {};
-    // Chỉ thêm các trường có giá trị (không phải undefined) để cập nhật
-    // và cho phép set null
     if (entryData.hasOwnProperty('quantity')) dataToUpdate.quantity = entryData.quantity;
     if (entryData.hasOwnProperty('po')) dataToUpdate.po = entryData.po;
     if (entryData.hasOwnProperty('box')) dataToUpdate.box = entryData.box;
@@ -538,8 +532,6 @@ export const updateProductionEntryById = async (
 
     if (Object.keys(dataToUpdate).length === 0) {
         Alert.alert('Thông báo', 'Không có thông tin nào để cập nhật.');
-        // Hoặc trả về entry gốc nếu đã fetch trước đó và không có gì thay đổi.
-        // Để đơn giản, ở đây ta coi như không có gì thay đổi là không thành công.
         return null;
     }
 
@@ -564,3 +556,24 @@ export const updateProductionEntryById = async (
     }
 };
 
+// ================== HÀM RPC CHO MÀN HÌNH THỐNG KÊ ==================
+export const getStatisticsRPC = async (userId: string, date: Date): Promise<any | null> => {
+    try {
+        const dateString = formatToYYYYMMDD(date);
+        const { data, error } = await supabase.rpc('get_user_monthly_stats', {
+            user_id_param: userId,
+            today_param: dateString
+        });
+
+        if (error) {
+            console.error('[Supabase RPC] Lỗi khi gọi hàm get_user_monthly_stats:', error);
+            Alert.alert("Lỗi máy chủ", "Không thể lấy dữ liệu thống kê từ máy chủ. " + error.message);
+            return null;
+        }
+        return data;
+    } catch (e: any) {
+        console.error('[Supabase RPC] Exception khi gọi hàm thống kê:', e.message);
+        Alert.alert("Lỗi ứng dụng", "Có lỗi xảy ra khi gọi hàm thống kê.");
+        return null;
+    }
+};
