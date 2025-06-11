@@ -245,13 +245,13 @@ const styles = StyleSheet.create({
         color: theme.colors.text,
     },
     cardTotalWorkContainer: {
-        flex: 1,
+        flex: 2,
         flexDirection: 'row',
         alignItems: 'center',
         justifyContent: 'flex-end',
     },
     cardTotalWorkLabel: {
-        flex: 0.4,
+        // flex: 0.4,
         fontSize: theme.typography.fontSize['level-3'],
         fontStyle: theme.typography.fontStyle['italic'],
         color: theme.colors.text,
