@@ -230,7 +230,7 @@ const styles = StyleSheet.create({
         justifyContent: 'flex-end',
     },
     iconGroup: {
-        flex: 0.3,
+        flex: 1,
         flexDirection: 'row',
         alignItems: 'center',
         justifyContent: 'flex-end',
@@ -245,13 +245,13 @@ const styles = StyleSheet.create({
         color: theme.colors.text,
     },
     cardTotalWorkContainer: {
-        flex: 2,
+        flex: 1,
         flexDirection: 'row',
         alignItems: 'center',
         justifyContent: 'flex-end',
+        borderWidth: 1,
     },
     cardTotalWorkLabel: {
-        // flex: 0.4,
         fontSize: theme.typography.fontSize['level-3'],
         fontStyle: theme.typography.fontStyle['italic'],
         color: theme.colors.text,
