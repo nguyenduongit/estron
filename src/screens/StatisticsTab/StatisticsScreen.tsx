@@ -23,7 +23,7 @@ import {
   formatDate,
   EstronWeekPeriod,
 } from '../../utils/dateUtils';
-import { getStatisticsRPC } from '../../services/storage'; // Thay thế các import cũ
+import { getStatisticsRPC } from '../../services/storage';
 import { supabase } from '../../services/supabase';
 import Button from '../../components/common/Button';
 import ModalWrapper from '../../components/common/ModalWrapper';
@@ -66,9 +66,11 @@ interface WeeklyProductStat {
 
 interface WeeklyStatistics {
   weekInfo: EstronWeekPeriod;
-  productStats: WeeklyProductStat[];
+  productStats: WeeklyProductStat[] | null;
   totalWorkInWeek: number;
+  totalMeetingMinutesInWeek?: number;
 }
+
 
 export default function StatisticsScreen() {
   const navigation = useNavigation<StatisticsScreenNavigationProp>();
@@ -78,6 +80,7 @@ export default function StatisticsScreen() {
   const [userProfile, setUserProfile] = useState<Profile | null>(null);
   const [currentEstronMonth, setCurrentEstronMonth] = useState<EstronMonthPeriod | null>(null);
   const [errorLoading, setErrorLoading] = useState<string | null>(null);
+
   const [standardWorkdaysForMonth, setStandardWorkdaysForMonth] = useState<number>(0);
   const [standardWorkdaysToCurrent, setStandardWorkdaysToCurrent] = useState<number>(0);
   const [totalProductWorkDone, setTotalProductWorkDone] = useState<number>(0);
@@ -131,7 +134,6 @@ export default function StatisticsScreen() {
     });
   }, [navigation, currentEstronMonth, handleShowAuthorModal]);
 
-  // ================== HÀM LOAD DỮ LIỆU ĐÃ ĐƯỢC TỐI ƯU ==================
   const loadStatisticsData = useCallback(async () => {
     if (!userId) {
       return;
@@ -143,7 +145,6 @@ export default function StatisticsScreen() {
       const stats = await getStatisticsRPC(userId, today);
 
       if (stats) {
-        // Gán trực tiếp state từ dữ liệu JSON đã được xử lý bởi backend
         setUserProfile(stats.userProfile);
         setCurrentEstronMonth(stats.monthInfo);
         setStandardWorkdaysForMonth(stats.standardWorkdaysForMonth);
@@ -164,7 +165,6 @@ export default function StatisticsScreen() {
       setIsLoading(false);
     }
   }, [userId]);
-  // ====================================================================
 
   useFocusEffect(
     useCallback(() => {
@@ -277,6 +277,7 @@ export default function StatisticsScreen() {
         </View>
       </View>
 
+      {/* --- Weekly Statistics Section --- */}
       {weeklyStatistics.length > 0 && (
         <View style={styles.weeklyStatsSection}>
             <Text style={styles.sectionTitle}>Thống kê sản lượng theo tuần</Text>
@@ -287,23 +288,34 @@ export default function StatisticsScreen() {
                         <Text style={styles.weekCardTotalWork}>Tổng: {weekStat.totalWorkInWeek.toLocaleString()} công</Text>
                     </View>
                     <View style={styles.weekCardBody}>
-                        {weekStat.productStats.map((prodStat, index) => (
+                        {weekStat.productStats && weekStat.productStats.map((prodStat, index) => (
                             <View
                                 key={prodStat.product_code}
                                 style={[
                                     styles.productStatRow,
-                                    index < weekStat.productStats.length - 1 && styles.productStatRowBorder,
+                                    (index < (weekStat.productStats?.length ?? 1) - 1 || (weekStat.totalMeetingMinutesInWeek ?? 0) > 0) && styles.productStatRowBorder
                                 ]}
                             >
                                 <Text style={styles.productNameText} numberOfLines={1}>{`${prodStat.product_code} `}</Text>
                                 <Text style={styles.productValueText}>{`${prodStat.total_quantity.toLocaleString()} pcs (${prodStat.total_work_done.toLocaleString()} công)`}</Text>
                             </View>
                         ))}
+                        {/* ================== BẮT ĐẦU SỬA LỖI ================== */}
+                        {(weekStat.totalMeetingMinutesInWeek ?? 0) > 0 && (
+                           <View style={styles.productStatRow}>
+                                <Text style={styles.productNameText}>Hỗ trợ:</Text>
+                                <Text style={styles.productValueText}>
+                                    {`${weekStat.totalMeetingMinutesInWeek} phút (${((weekStat.totalMeetingMinutesInWeek ?? 0) / 480).toFixed(2)} công)`}
+                                </Text>
+                            </View>
+                        )}
+                        {/* ================== KẾT THÚC SỬA LỖI ================== */}
                     </View>
                 </View>
             ))}
         </View>
       )}
+
 
       <ModalWrapper visible={isAuthorModalVisible} onClose={handleCloseAuthorModal}>
         <View style={styles.authorModalContainer}>
@@ -401,14 +413,14 @@ const styles = StyleSheet.create({
     fontWeight: theme.typography.fontWeight['bold'],
     textAlign: 'right',
     minWidth: 80,
-    // paddingRight: theme.spacing['level-2'],
+    paddingRight: theme.spacing['level-2'],
   },
   statsUnit: {
     fontSize: theme.typography.fontSize['level-3'],
     color: theme.colors.text,
     fontStyle: 'italic',
     textAlign: 'left',
-    minWidth: 40,
+    minWidth: 50,
   },
   divider: {
     height: 1,
