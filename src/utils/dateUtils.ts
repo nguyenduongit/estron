@@ -20,6 +20,7 @@ import { vi } from 'date-fns/locale'; // Import locale tiếng Việt
 
 // Re-export parseISO để các module khác có thể dùng từ dateUtils
 export const parseISO = dateFnsParseISO;
+export { getDay };
 
 export interface EstronMonthPeriod {
   year: number; // Năm dương lịch của ngày bắt đầu tháng Estron

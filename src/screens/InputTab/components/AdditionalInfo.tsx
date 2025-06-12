@@ -1,17 +1,14 @@
+// src/screens/InputTab/components/AdditionalInfo.tsx
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, TextInput as RNTextInput, Alert, ActivityIndicator, Platform } from 'react-native';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { theme } from '../../../theme';
 import { DailySupplementaryData } from '../../../types/data';
-import {
-  saveDailySupplementaryData
-} from '../../../services/storage';
+import { saveDailySupplementaryData } from '../../../services/storage';
+import { getDay, parseISO } from '../../../utils/dateUtils'; // Thêm import cần thiết
 
-// THAY ĐỔI: Tách các tùy chọn cho Nghỉ và Tăng ca
-const LEAVE_OPTIONS = [
-  { label: 'Nữa ngày', value: 4 },
-  { label: 'Cả ngày', value: 8 },
-];
+// Bỏ các hằng số cũ
+// const LEAVE_OPTIONS = ...
 const OVERTIME_OPTIONS = [1, 2, 3, 4, 8];
 
 interface AdditionalInfoProps {
@@ -31,6 +28,10 @@ const AdditionalInfo: React.FC<AdditionalInfoProps> = ({ userId, date, initialDa
   
   const [warningMessage, setWarningMessage] = useState<string | null>(null);
   const warningTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+
+  // ================== LOGIC MỚI CHO THỨ 7 ==================
+  const isSaturday = getDay(parseISO(date)) === 6;
+  // =========================================================
 
   const showWarningMessage = (message: string) => {
     if (warningTimeoutRef.current) {
@@ -87,6 +88,7 @@ const AdditionalInfo: React.FC<AdditionalInfoProps> = ({ userId, date, initialDa
 
     dataToSave.overtimeHours = field === 'overtimeHours'
         ? (value as number | null)
+        // Nếu nghỉ cả ngày thì reset tăng ca và họp
         : (options?.resetOvertimeAndMeeting ? null : (currentOvertimeHours === undefined ? null : currentOvertimeHours));
 
     const meetingVal = field === 'meetingMinutes'
@@ -125,7 +127,11 @@ const AdditionalInfo: React.FC<AdditionalInfoProps> = ({ userId, date, initialDa
       const newValue = currentLeaveHours === hours ? null : hours;
       setCurrentLeaveHours(newValue);
       newIsFullDayLeave = newValue === 8;
-      if (newIsFullDayLeave) {
+      
+      // Nếu là ngày thường và chọn nghỉ cả ngày (8h), hoặc là thứ 7 và chọn nghỉ (4h) thì reset các mục khác
+      const isConsideredFullDayLeave = (!isSaturday && newValue === 8) || (isSaturday && newValue === 4);
+
+      if (isConsideredFullDayLeave) {
         setCurrentOvertimeHours(null);
         setCurrentMeetingMinutes('');
         handleSaveSupplementaryData('leaveHours', newValue, { resetOvertimeAndMeeting: true });
@@ -133,7 +139,8 @@ const AdditionalInfo: React.FC<AdditionalInfoProps> = ({ userId, date, initialDa
         handleSaveSupplementaryData('leaveHours', newValue);
       }
       if (onFullDayLeaveChange) {
-        onFullDayLeaveChange(newIsFullDayLeave);
+        // isFullDayLeave vẫn dựa trên 8h để vô hiệu hóa các nút nhập sản lượng
+        onFullDayLeaveChange(newValue === 8);
       }
     } else if (type === 'overtimeHours') {
       const newValue = currentOvertimeHours === hours ? null : hours;
@@ -162,8 +169,8 @@ const AdditionalInfo: React.FC<AdditionalInfoProps> = ({ userId, date, initialDa
   }
   
   const isLeaveDisabled = !!initialData?.leaveVerified;
-  const isOvertimeDisabled = isFullDayLeave || !!initialData?.overtimeVerified;
-  const isMeetingDisabled = isFullDayLeave || !!initialData?.meetingVerified;
+  const isOvertimeDisabled = isFullDayLeave || !!initialData?.overtimeVerified || (isSaturday && currentLeaveHours === 4);
+  const isMeetingDisabled = isFullDayLeave || !!initialData?.meetingVerified || (isSaturday && currentLeaveHours === 4);
 
   return (
     <View style={styles.additionalSection}>
@@ -171,44 +178,59 @@ const AdditionalInfo: React.FC<AdditionalInfoProps> = ({ userId, date, initialDa
         <Text style={styles.warningText}>{warningMessage}</Text>
       )}
 
-      {/* THAY ĐỔI: Mục Nghỉ */}
+      {/* ================== THAY ĐỔI MỤC NGHỈ ================== */}
       <View style={styles.additionalRow}>
         <Text style={[styles.additionalLabel, isLeaveDisabled && styles.disabledText]}>Nghỉ:</Text>
         <View style={styles.optionsContainer}>
-          {LEAVE_OPTIONS.map(option => {
-            const isSelected = currentLeaveHours === option.value;
-            // Chỉ vô hiệu hóa nút "Nữa ngày" (4h) nếu nút "Cả ngày" (8h) ĐANG được chọn
-            const isDisabledByFullDay = isFullDayLeave && !isSelected;
-
-            return (
-              <TouchableOpacity
-                key={`leave-${option.value}`}
+            {/* Nút Nữa ngày */}
+            <TouchableOpacity
+                key={`leave-half`}
                 style={[
-                  styles.hourOptionButton,
-                  styles.leaveOptionButton, // Style mới để các nút rộng hơn
-                  isSelected && option.value === 8 && styles.hourOptionSelectedFullDayLeave,
-                  isSelected && option.value !== 8 && styles.hourOptionSelected,
-                  (isDisabledByFullDay || isLeaveDisabled) && styles.disabledButton,
+                    styles.hourOptionButton,
+                    styles.leaveOptionButton,
+                    currentLeaveHours === 4 && !isSaturday && styles.hourOptionSelected,
+                    (isSaturday || isLeaveDisabled) && styles.disabledButton,
                 ]}
-                onPress={() => handleHourOptionPress('leaveHours', option.value)}
-                disabled={isDisabledByFullDay || isLeaveDisabled}
+                onPress={() => handleHourOptionPress('leaveHours', 4)}
+                disabled={isSaturday || isLeaveDisabled}
               >
                 <Text
                   style={[
                     styles.hourOptionText,
-                    isSelected && (option.value === 8 ? styles.hourOptionSelectedFullDayLeaveText : styles.hourOptionSelectedText),
-                    (isDisabledByFullDay || isLeaveDisabled) && styles.disabledText,
+                    currentLeaveHours === 4 && !isSaturday && styles.hourOptionSelectedText,
+                    (isSaturday || isLeaveDisabled) && styles.disabledText,
                   ]}
                 >
-                  {option.label}
+                  Nữa ngày
                 </Text>
-              </TouchableOpacity>
-            );
-          })}
+            </TouchableOpacity>
+
+            {/* Nút Cả ngày */}
+            <TouchableOpacity
+                key={`leave-full`}
+                style={[
+                    styles.hourOptionButton,
+                    styles.leaveOptionButton,
+                    ((!isSaturday && currentLeaveHours === 8) || (isSaturday && currentLeaveHours === 4)) && styles.hourOptionSelectedFullDayLeave,
+                    isLeaveDisabled && styles.disabledButton
+                ]}
+                onPress={() => handleHourOptionPress('leaveHours', isSaturday ? 4 : 8)}
+                disabled={isLeaveDisabled}
+              >
+                <Text
+                  style={[
+                    styles.hourOptionText,
+                    ((!isSaturday && currentLeaveHours === 8) || (isSaturday && currentLeaveHours === 4)) && styles.hourOptionSelectedFullDayLeaveText,
+                    isLeaveDisabled && styles.disabledText
+                  ]}
+                >
+                  Cả ngày
+                </Text>
+            </TouchableOpacity>
         </View>
       </View>
 
-      {/* Mục Tăng ca giữ nguyên */}
+      {/* Mục Tăng ca */}
       <View style={styles.additionalRow}>
         <Text style={[styles.additionalLabel, isOvertimeDisabled && styles.disabledText]}>Tăng ca:</Text>
         <View style={styles.optionsContainer}>
@@ -237,7 +259,7 @@ const AdditionalInfo: React.FC<AdditionalInfoProps> = ({ userId, date, initialDa
         </View>
       </View>
 
-      {/* Mục Họp/Đào tạo giữ nguyên */}
+      {/* Mục Họp/Đào tạo */}
       <TouchableOpacity
         activeOpacity={1}
         onPress={() => {
@@ -268,6 +290,7 @@ const AdditionalInfo: React.FC<AdditionalInfoProps> = ({ userId, date, initialDa
   );
 };
 
+// Giữ nguyên styles, chỉ thay đổi 1 chút
 const styles = StyleSheet.create({
   additionalSection: {
     paddingHorizontal: theme.spacing['level-4'],
@@ -301,10 +324,11 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     flexWrap: 'nowrap',
     flex: 0.7,
+    gap: theme.spacing['level-1'],
   },
   hourOptionButton: {
     height: 28,
-    minWidth: 40,
+    flex:1,
     paddingVertical: theme.spacing['level-1'],
     borderRadius: theme.borderRadius['level-2'],
     borderColor: theme.colors.primary,
@@ -312,11 +336,10 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     borderWidth: 1,
     paddingHorizontal: theme.spacing['level-1'],
-    marginHorizontal: 2,
+    // marginHorizontal: 2,
   },
-  // THAY ĐỔI: Style mới cho các nút Nghỉ để chúng rộng hơn
   leaveOptionButton: {
-      flex: 1, // Cho phép các nút co giãn đều nhau
+      flex: 1, 
       paddingHorizontal: theme.spacing['level-2'],
   },
   hourOptionSelected: {

@@ -401,14 +401,14 @@ const styles = StyleSheet.create({
     fontWeight: theme.typography.fontWeight['bold'],
     textAlign: 'right',
     minWidth: 80,
-    paddingRight: theme.spacing['level-2'],
+    // paddingRight: theme.spacing['level-2'],
   },
   statsUnit: {
     fontSize: theme.typography.fontSize['level-3'],
     color: theme.colors.text,
     fontStyle: 'italic',
     textAlign: 'left',
-    minWidth: 50,
+    minWidth: 40,
   },
   divider: {
     height: 1,

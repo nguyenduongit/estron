@@ -22,6 +22,27 @@ import Button from '../../components/common/Button';
 import TextInput from '../../components/common/TextInput';
 import ModalWrapper from '../../components/common/ModalWrapper';
 
+// ================== BẮT ĐẦU: MÃ ẨN SCROLLBAR CHO WEB ==================
+if (Platform.OS === 'web') {
+  const styleId = 'hide-settings-scrollbar-style';
+  if (!document.getElementById(styleId)) {
+    const style = document.createElement('style');
+    style.id = styleId;
+    // CSS để nhắm vào container có thể cuộn bên trong DraggableFlatList trên web
+    style.textContent = `
+      [data-testid="settings-scroll-view"] > div::-webkit-scrollbar {
+        display: none;
+      }
+      [data-testid="settings-scroll-view"] > div {
+        -ms-overflow-style: none;
+        scrollbar-width: none;
+      }
+    `;
+    document.head.appendChild(style);
+  }
+}
+// ================== KẾT THÚC: MÃ ẨN SCROLLBAR CHO WEB ==================
+
 type SettingScreenNavigationProp = StackNavigationProp<InputStackNavigatorParamList, 'Settings'>;
 
 export default function SettingScreen() {
@@ -141,7 +162,7 @@ export default function SettingScreen() {
         </TouchableOpacity>
       ),
     });
-  }, [navigation, isEditMode, userSelectedQuotas, handleSaveOrder]); // handleSaveOrder vẫn cần trong dependencies của useLayoutEffect
+  }, [navigation, isEditMode, userSelectedQuotas, handleSaveOrder]);
 
   const handleOpenAddModal = () => {
     setCurrentProductCodeInput('');
@@ -393,6 +414,10 @@ export default function SettingScreen() {
           containerStyle={{ flex: 1, paddingTop: theme.spacing['level-2'] }}
           ListFooterComponent={<View style={{ height: isEditMode ? theme.spacing['level-4'] : 90 }} />}
           activationDistance={Platform.OS === 'web' ? 5 : 10}
+          // ================== THÊM PROP ĐỂ ẨN SCROLLBAR ==================
+          showsVerticalScrollIndicator={false}
+          testID="settings-scroll-view"
+          // ===============================================================
         />
       )}
 
@@ -431,7 +456,7 @@ export default function SettingScreen() {
             </Text>
           )}
           <View style={styles.modalActions}>
-            <Button title="Hủy" onPress={handleCloseAddModal} type="secondary" style={styles.modalButton} />
+            {/* <Button title="Hủy" onPress={handleCloseAddModal} type="secondary" style={styles.modalButton} /> */}
             <Button
               title={isLoading ? 'Đang thêm...' : 'Thêm vào danh sách'}
               onPress={handleAddProduct}
@@ -558,7 +583,6 @@ const styles = StyleSheet.create({
   },
   modalButton: {
     flex: 1,
-    marginHorizontal: theme.spacing['level-2'],
   },
   productSearchMessage: {
     fontSize: theme.typography.fontSize['level-3'],

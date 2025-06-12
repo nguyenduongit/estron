@@ -9,7 +9,7 @@ import {
 import 'react-native-get-random-values';
 import { supabase } from './supabase';
 import { Alert } from 'react-native';
-import { formatToYYYYMMDD } from '../utils/dateUtils'; // Thêm import cần thiết
+import { formatToYYYYMMDD } from '../utils/dateUtils';
 
 export const getQuotaSettingByProductCode = async (
     productCode: string
@@ -221,7 +221,6 @@ export const getQuotaValueBySalaryLevel = (
     return 0;
 };
 
-// --- Production Entry Management (Nhập sản lượng) - SUPABASE ---
 export const addProductionBoxEntry = async (
     entryData: Omit<ProductionEntry, 'id' | 'created_at' | 'verified' | 'quota_percentage'> & {
         user_id: string;
@@ -403,6 +402,7 @@ export const getSupplementaryDataByDate = async (
     }
 };
 
+// ================== HÀM ĐÃ ĐƯỢC CẬP NHẬT ==================
 export const saveDailySupplementaryData = async (
     userId: string,
     entryToUpdate: DailySupplementaryData
@@ -412,45 +412,88 @@ export const saveDailySupplementaryData = async (
         Alert.alert('Lỗi', 'Không thể xác định người dùng để lưu dữ liệu.');
         return null;
     }
+
     const { date, leaveHours, overtimeHours, meetingMinutes } = entryToUpdate;
-    const dataToUpsert = {
-        user_id: userId,
-        date: date,
-        leave: leaveHours === undefined ? null : leaveHours,
-        overtime: overtimeHours === undefined ? null : overtimeHours,
-        meeting: meetingMinutes === undefined ? null : meetingMinutes,
-    };
-    try {
-        const { data, error } = await supabase
-            .from('additional')
-            .upsert(dataToUpsert, { onConflict: 'user_id, date' })
-            .select(
-                'date, leave, overtime, meeting, leave_verified, overtime_verified, meeting_verified'
-            )
-            .single();
-        if (error) {
-            console.error('[Supabase] Lỗi khi upsert dữ liệu phụ trợ:', error.message);
-            Alert.alert('Lỗi Lưu Trữ', `Không thể lưu dữ liệu phụ trợ: ${error.message}`);
+
+    // Kiểm tra xem tất cả các giá trị có phải là null/undefined không
+    const shouldDelete =
+        (leaveHours === null || leaveHours === undefined) &&
+        (overtimeHours === null || overtimeHours === undefined) &&
+        (meetingMinutes === null || meetingMinutes === undefined);
+
+    if (shouldDelete) {
+        // Nếu tất cả là null, thực hiện xóa dòng
+        try {
+            const { error } = await supabase
+                .from('additional')
+                .delete()
+                .match({ user_id: userId, date: date });
+
+            if (error) {
+                console.error('[Supabase] Lỗi khi xóa dòng dữ liệu phụ trợ rỗng:', error.message);
+                Alert.alert('Lỗi Xóa Dữ Liệu', `Không thể xóa dòng dữ liệu rỗng: ${error.message}`);
+                return entryToUpdate; // Trả về dữ liệu cũ để UI không bị sai lệch
+            }
+
+            // Trả về một object đã được reset để báo hiệu cho UI biết đã xóa thành công
+            return {
+                date: date,
+                leaveHours: null,
+                overtimeHours: null,
+                meetingMinutes: null,
+                leaveVerified: false,
+                overtimeVerified: false,
+                meetingVerified: false,
+            };
+        } catch (e: any) {
+            console.error('[Supabase] Exception khi xóa dòng dữ liệu phụ trợ rỗng:', e.message);
+            Alert.alert('Lỗi Hệ Thống', `Có lỗi không mong muốn xảy ra: ${e.message}`);
+            return entryToUpdate;
+        }
+    } else {
+        // Nếu có ít nhất một giá trị, thực hiện upsert như cũ
+        const dataToUpsert = {
+            user_id: userId,
+            date: date,
+            leave: leaveHours === undefined ? null : leaveHours,
+            overtime: overtimeHours === undefined ? null : overtimeHours,
+            meeting: meetingMinutes === undefined ? null : meetingMinutes,
+        };
+        try {
+            const { data, error } = await supabase
+                .from('additional')
+                .upsert(dataToUpsert, { onConflict: 'user_id, date' })
+                .select(
+                    'date, leave, overtime, meeting, leave_verified, overtime_verified, meeting_verified'
+                )
+                .single();
+
+            if (error) {
+                console.error('[Supabase] Lỗi khi upsert dữ liệu phụ trợ:', error.message);
+                Alert.alert('Lỗi Lưu Trữ', `Không thể lưu dữ liệu phụ trợ: ${error.message}`);
+                return null;
+            }
+
+            if (data) {
+                return {
+                    date: data.date,
+                    leaveHours: data.leave,
+                    overtimeHours: data.overtime,
+                    meetingMinutes: data.meeting,
+                    leaveVerified: data.leave_verified,
+                    overtimeVerified: data.overtime_verified,
+                    meetingVerified: data.meeting_verified,
+                };
+            }
+            return null;
+        } catch (e: any) {
+            console.error('[Supabase] Exception khi upsert dữ liệu phụ trợ:', e.message);
+            Alert.alert('Lỗi Hệ Thống', `Có lỗi không mong muốn xảy ra: ${e.message}`);
             return null;
         }
-        if (data) {
-            return {
-                date: data.date,
-                leaveHours: data.leave,
-                overtimeHours: data.overtime,
-                meetingMinutes: data.meeting,
-                leaveVerified: data.leave_verified,
-                overtimeVerified: data.overtime_verified,
-                meetingVerified: data.meeting_verified,
-            };
-        }
-        return null;
-    } catch (e: any) {
-        console.error('[Supabase] Exception khi upsert dữ liệu phụ trợ:', e.message);
-        Alert.alert('Lỗi Hệ Thống', `Có lỗi không mong muốn xảy ra: ${e.message}`);
-        return null;
     }
 };
+// ==========================================================
 
 export const getSupplementaryDataByDateRange = async (
     userId: string,
@@ -556,7 +599,6 @@ export const updateProductionEntryById = async (
     }
 };
 
-// ================== HÀM RPC CHO MÀN HÌNH THỐNG KÊ ==================
 export const getStatisticsRPC = async (userId: string, date: Date): Promise<any | null> => {
     try {
         const dateString = formatToYYYYMMDD(date);
