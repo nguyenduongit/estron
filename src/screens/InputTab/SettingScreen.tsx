@@ -408,7 +408,6 @@ export default function SettingScreen() {
           )}
 
           <View style={styles.modalActions}>
-            <Button title="Hủy" onPress={handleCloseAddModal} type="secondary" style={styles.modalButton} />
             <Button
               title={isLoading ? 'Đang thêm...' : 'Thêm vào danh sách'}
               onPress={handleAddProduct}
@@ -558,7 +557,6 @@ const styles = StyleSheet.create({
   },
   modalButton: {
     flex: 1,
-    marginHorizontal: theme.spacing['level-2'],
   },
   customModalHeaderContainer: {
     paddingBottom: theme.spacing['level-4'],
@@ -574,7 +572,7 @@ const styles = StyleSheet.create({
   },
   modalProductDetails: {
     marginTop: theme.spacing['level-4'],
-    padding: theme.spacing['level-4'],
+    paddingTop: theme.spacing['level-4'],
     backgroundColor: theme.colors.background1,
     borderRadius: theme.borderRadius['level-4'],
   },
@@ -588,9 +586,10 @@ const styles = StyleSheet.create({
   modalQuotaRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    paddingVertical: theme.spacing['level-1'],
-    borderBottomWidth: 0.5,
-    borderBottomColor: theme.colors.background2,
+    alignItems:'center',
+    borderTopWidth: 0.5,
+    borderTopColor: theme.colors.borderColor,
+    
   },
   errorTextModal: {
     fontSize: theme.typography.fontSize['level-3'],
