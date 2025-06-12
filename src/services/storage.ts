@@ -35,6 +35,32 @@ export const getQuotaSettingByProductCode = async (
     }
 };
 
+// ================== BẮT ĐẦU THÊM HÀM MỚI ==================
+export const getQuotaSettingsByProductCodes = async (
+    productCodes: string[]
+): Promise<QuotaSetting[]> => {
+    if (!productCodes || productCodes.length === 0) {
+        return [];
+    }
+    try {
+        const { data, error } = await supabase
+            .from('quota_settings')
+            .select('*')
+            .in('product_code', productCodes);
+
+        if (error) {
+            console.error('[Supabase] Lỗi khi lấy nhiều chi tiết mã sản phẩm:', error);
+            return [];
+        }
+        return data || [];
+    } catch (e) {
+        console.error('[Supabase] Exception khi lấy nhiều chi tiết mã sản phẩm:', e);
+        return [];
+    }
+};
+// ================== KẾT THÚC THÊM HÀM MỚI ==================
+
+
 export const getUserSelectedQuotas = async (userId: string): Promise<UserSelectedQuota[]> => {
     if (!userId) {
         console.error('[Supabase] getUserSelectedQuotas: userId không được cung cấp.');
@@ -402,7 +428,6 @@ export const getSupplementaryDataByDate = async (
     }
 };
 
-// ================== HÀM ĐÃ ĐƯỢC CẬP NHẬT ==================
 export const saveDailySupplementaryData = async (
     userId: string,
     entryToUpdate: DailySupplementaryData
@@ -415,14 +440,12 @@ export const saveDailySupplementaryData = async (
 
     const { date, leaveHours, overtimeHours, meetingMinutes } = entryToUpdate;
 
-    // Kiểm tra xem tất cả các giá trị có phải là null/undefined không
     const shouldDelete =
         (leaveHours === null || leaveHours === undefined) &&
         (overtimeHours === null || overtimeHours === undefined) &&
         (meetingMinutes === null || meetingMinutes === undefined);
 
     if (shouldDelete) {
-        // Nếu tất cả là null, thực hiện xóa dòng
         try {
             const { error } = await supabase
                 .from('additional')
@@ -432,10 +455,9 @@ export const saveDailySupplementaryData = async (
             if (error) {
                 console.error('[Supabase] Lỗi khi xóa dòng dữ liệu phụ trợ rỗng:', error.message);
                 Alert.alert('Lỗi Xóa Dữ Liệu', `Không thể xóa dòng dữ liệu rỗng: ${error.message}`);
-                return entryToUpdate; // Trả về dữ liệu cũ để UI không bị sai lệch
+                return entryToUpdate;
             }
 
-            // Trả về một object đã được reset để báo hiệu cho UI biết đã xóa thành công
             return {
                 date: date,
                 leaveHours: null,
@@ -451,7 +473,6 @@ export const saveDailySupplementaryData = async (
             return entryToUpdate;
         }
     } else {
-        // Nếu có ít nhất một giá trị, thực hiện upsert như cũ
         const dataToUpsert = {
             user_id: userId,
             date: date,
@@ -493,7 +514,6 @@ export const saveDailySupplementaryData = async (
         }
     }
 };
-// ==========================================================
 
 export const getSupplementaryDataByDateRange = async (
     userId: string,

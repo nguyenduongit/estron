@@ -13,6 +13,7 @@ import { supabase } from '../../services/supabase';
 import {
   getQuotaSettingByProductCode,
   getUserSelectedQuotas,
+  getQuotaSettingsByProductCodes,
   addUserSelectedQuota,
   deleteUserSelectedQuota,
   saveUserSelectedQuotasOrder,
@@ -22,13 +23,11 @@ import Button from '../../components/common/Button';
 import TextInput from '../../components/common/TextInput';
 import ModalWrapper from '../../components/common/ModalWrapper';
 
-// ================== BẮT ĐẦU: MÃ ẨN SCROLLBAR CHO WEB ==================
 if (Platform.OS === 'web') {
   const styleId = 'hide-settings-scrollbar-style';
   if (!document.getElementById(styleId)) {
     const style = document.createElement('style');
     style.id = styleId;
-    // CSS để nhắm vào container có thể cuộn bên trong DraggableFlatList trên web
     style.textContent = `
       [data-testid="settings-scroll-view"] > div::-webkit-scrollbar {
         display: none;
@@ -41,9 +40,18 @@ if (Platform.OS === 'web') {
     document.head.appendChild(style);
   }
 }
-// ================== KẾT THÚC: MÃ ẨN SCROLLBAR CHO WEB ==================
 
 type SettingScreenNavigationProp = StackNavigationProp<InputStackNavigatorParamList, 'Settings'>;
+
+const SALARY_LEVELS = [
+  { key: 'level_0_9', label: 'Bậc 0.9' },
+  { key: 'level_1_0', label: 'Bậc 1.0' },
+  { key: 'level_1_1', label: 'Bậc 1.1' },
+  { key: 'level_2_0', label: 'Bậc 2.0' },
+  { key: 'level_2_1', label: 'Bậc 2.1' },
+  { key: 'level_2_2', label: 'Bậc 2.2' },
+  { key: 'level_2_5', label: 'Bậc 2.5' },
+] as const;
 
 export default function SettingScreen() {
   const navigation = useNavigation<SettingScreenNavigationProp>();
@@ -57,13 +65,15 @@ export default function SettingScreen() {
   const [currentProductCodeInput, setCurrentProductCodeInput] = useState('');
   const [foundProduct, setFoundProduct] = useState<QuotaSetting | null>(null);
   const [productSearchMessage, setProductSearchMessage] = useState<string | null>(null);
-  const [productSearchMessageType, setProductSearchMessageType] = useState<'success' | 'error' | null>(null);
   const [isSearchingProduct, setIsSearchingProduct] = useState(false);
 
   const [isDeleteConfirmModalVisible, setIsDeleteConfirmModalVisible] = useState(false);
   const [quotaToDelete, setQuotaToDelete] = useState<UserSelectedQuota | null>(null);
 
   const [userId, setUserId] = useState<string | null>(null);
+  const [expandedProductCode, setExpandedProductCode] = useState<string | null>(null);
+  const [quotaDetailsMap, setQuotaDetailsMap] = useState<Map<string, QuotaSetting>>(new Map());
+
   const searchTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
   useEffect(() => {
@@ -71,34 +81,33 @@ export default function SettingScreen() {
       try {
         const {
           data: { user },
-          error: userError,
         } = await supabase.auth.getUser();
-        if (userError) {
-          console.error('[SettingScreen] Lỗi khi lấy user từ Supabase:', userError);
-          Alert.alert('Lỗi Xác Thực', 'Không thể lấy thông tin người dùng. Vui lòng thử đăng nhập lại.');
-          return;
-        }
-        if (user) {
-          setUserId(user.id);
-        } else {
-          console.warn('[SettingScreen] Không tìm thấy user nào đang đăng nhập.');
-        }
+        if (user) setUserId(user.id);
       } catch (error) {
         console.error('[SettingScreen] Exception khi lấy thông tin người dùng:', error);
-        Alert.alert('Lỗi', 'Có lỗi nghiêm trọng xảy ra khi lấy thông tin người dùng.');
       }
     };
     fetchUser();
   }, []);
 
   const loadUserQuotas = useCallback(async () => {
-    if (!userId) {
-      return;
-    }
+    if (!userId) return;
     setIsLoading(true);
     try {
       const storedQuotas = await getUserSelectedQuotas(userId);
       setUserSelectedQuotas(storedQuotas);
+
+      if (storedQuotas.length > 0) {
+        const productCodes = storedQuotas.map(q => q.product_code);
+        const details = await getQuotaSettingsByProductCodes(productCodes);
+        const detailsMap = new Map<string, QuotaSetting>();
+        details.forEach((detail: QuotaSetting) => {
+          detailsMap.set(detail.product_code, detail);
+        });
+        setQuotaDetailsMap(detailsMap);
+      } else {
+        setQuotaDetailsMap(new Map());
+      }
     } catch (error) {
       console.error('[SettingScreen] loadUserQuotas error:', error);
       Alert.alert('Lỗi', 'Không thể tải danh sách định mức đã chọn.');
@@ -115,46 +124,32 @@ export default function SettingScreen() {
 
   const handleSaveOrder = useCallback(async () => {
     if (!userId) {
-      Alert.alert('Lỗi', 'Không tìm thấy thông tin người dùng để lưu thứ tự.');
+      Alert.alert('Lỗi', 'Không thể xác định người dùng.');
       return;
     }
-    if (userSelectedQuotas.length === 0 && isEditMode) {
-      setIsEditMode(false);
-      return;
-    }
-
     setIsLoading(true);
     const success = await saveUserSelectedQuotasOrder(
       userId,
-      userSelectedQuotas.map(q => ({ product_code: q.product_code, zindex: q.zindex }))
+      userSelectedQuotas.map((q, index) => ({ product_code: q.product_code, zindex: index }))
     );
-    if (success) {
-      Alert.alert('Đã lưu', 'Thứ tự định mức đã được cập nhật.');
-    } else {
-      Alert.alert('Lỗi', 'Không thể lưu thứ tự định mức. Vui lòng thử lại.');
-    }
+    if (success) Alert.alert('Đã lưu', 'Thứ tự định mức đã được cập nhật.');
+    else Alert.alert('Lỗi', 'Không thể lưu thứ tự định mức. Vui lòng thử lại.');
     setIsEditMode(false);
     setIsLoading(false);
-  }, [userId, userSelectedQuotas, isEditMode]);
+  }, [userId, userSelectedQuotas]);
 
   useLayoutEffect(() => {
     navigation.setOptions({
       headerRight: () => (
         <TouchableOpacity
-          onPress={() => {
-            if (isEditMode) {
-              handleSaveOrder();
-            } else {
-              setIsEditMode(true);
-            }
-          }}
+          onPress={() => (isEditMode ? handleSaveOrder() : setIsEditMode(true))}
           style={{ marginRight: theme.spacing['level-3'], padding: theme.spacing['level-1'] }}
         >
           <Text
             style={{
               color: theme.colors.textOnPrimary,
               fontSize: theme.typography.fontSize['level-3'],
-              fontWeight: theme.typography.fontWeight['bold'],
+              fontWeight: 'bold',
             }}
           >
             {isEditMode ? 'Lưu' : 'Sửa'}
@@ -162,13 +157,12 @@ export default function SettingScreen() {
         </TouchableOpacity>
       ),
     });
-  }, [navigation, isEditMode, userSelectedQuotas, handleSaveOrder]);
+  }, [navigation, isEditMode, handleSaveOrder]);
 
   const handleOpenAddModal = () => {
     setCurrentProductCodeInput('');
     setFoundProduct(null);
     setProductSearchMessage(null);
-    setProductSearchMessageType(null);
     setIsAddModalVisible(true);
   };
 
@@ -177,7 +171,6 @@ export default function SettingScreen() {
     setCurrentProductCodeInput('');
     setFoundProduct(null);
     setProductSearchMessage(null);
-    setProductSearchMessageType(null);
   };
 
   const handleProductCodeChange = (text: string) => {
@@ -185,35 +178,25 @@ export default function SettingScreen() {
     setCurrentProductCodeInput(upperCaseText);
     setFoundProduct(null);
     setProductSearchMessage(null);
-    setProductSearchMessageType(null);
-
-    if (searchTimeoutRef.current) {
-      clearTimeout(searchTimeoutRef.current);
-    }
-
+    if (searchTimeoutRef.current) clearTimeout(searchTimeoutRef.current);
     if (upperCaseText.trim() === '') {
       setIsSearchingProduct(false);
       return;
     }
-
     setIsSearchingProduct(true);
     searchTimeoutRef.current = setTimeout(async () => {
       try {
         const productDetails = await getQuotaSettingByProductCode(upperCaseText.trim());
         if (productDetails) {
           setFoundProduct(productDetails);
-          setProductSearchMessage(`Tìm thấy: ${productDetails.product_name}`);
-          setProductSearchMessageType('success');
+          setProductSearchMessage(null);
         } else {
           setFoundProduct(null);
           setProductSearchMessage(`Mã sản phẩm '${upperCaseText.trim()}' không tồn tại.`);
-          setProductSearchMessageType('error');
         }
       } catch (error) {
-        console.error('[SettingScreen] Error during product code search:', error);
         setFoundProduct(null);
-        setProductSearchMessage('Lỗi khi tra cứu mã sản phẩm. Vui lòng thử lại.');
-        setProductSearchMessageType('error');
+        setProductSearchMessage('Lỗi khi tra cứu mã sản phẩm.');
       } finally {
         setIsSearchingProduct(false);
       }
@@ -221,22 +204,11 @@ export default function SettingScreen() {
   };
 
   const handleAddProduct = async () => {
-    if (!userId) {
-      Alert.alert('Lỗi', 'Không thể xác định người dùng.');
+    if (!userId || !foundProduct) return;
+    if (userSelectedQuotas.some(q => q.product_code === foundProduct.product_code)) {
+      Alert.alert('Thông báo', `Sản phẩm '${foundProduct.product_code}' đã có trong danh sách.`);
       return;
     }
-    if (!foundProduct || !currentProductCodeInput.trim()) {
-      Alert.alert('Lỗi', 'Vui lòng nhập mã sản phẩm hợp lệ và đã được tìm thấy.');
-      return;
-    }
-
-    const isAlreadyAdded = userSelectedQuotas.some(quota => quota.product_code === foundProduct.product_code);
-
-    if (isAlreadyAdded) {
-      Alert.alert('Thông báo', `Sản phẩm '${foundProduct.product_code}' đã có trong danh sách của bạn.`);
-      return;
-    }
-
     setIsLoading(true);
     Keyboard.dismiss();
     try {
@@ -247,37 +219,22 @@ export default function SettingScreen() {
         foundProduct.product_name,
         newOrder
       );
-
       if (addedQuota) {
         await loadUserQuotas();
         handleCloseAddModal();
         Alert.alert('Thành công', `Đã thêm sản phẩm '${addedQuota.product_name}'.`);
       } else {
-        Alert.alert(
-          'Lỗi',
-          `Không thể thêm sản phẩm. Mã '${foundProduct.product_code}' có thể đã tồn tại hoặc có lỗi khác từ server.`
-        );
+        Alert.alert('Lỗi', `Không thể thêm sản phẩm.`);
       }
     } catch (error) {
-      console.error('[SettingScreen] Exception during handleAddProduct:', error);
       Alert.alert('Lỗi', 'Đã có lỗi xảy ra khi thêm sản phẩm.');
     } finally {
       setIsLoading(false);
     }
   };
 
-  const handleDeleteQuotaPress = (productCodeToDelete: string) => {
-    if (!userId) {
-      Alert.alert('Lỗi', 'Không tìm thấy thông tin người dùng.');
-      return;
-    }
-    if (!isEditMode) {
-      return;
-    }
-    const quota = userSelectedQuotas.find(q => q.product_code === productCodeToDelete);
-    if (!quota) {
-      return;
-    }
+  const handleDeleteQuotaPress = (quota: UserSelectedQuota) => {
+    if (!isEditMode) return;
     setQuotaToDelete(quota);
     setIsDeleteConfirmModalVisible(true);
   };
@@ -288,37 +245,21 @@ export default function SettingScreen() {
   };
 
   const handleConfirmDelete = async () => {
-    if (!quotaToDelete || !userId) {
-      setIsDeleteConfirmModalVisible(false);
-      setQuotaToDelete(null);
-      Alert.alert('Lỗi', 'Có lỗi xảy ra, không thể xác định mục cần xóa.');
-      return;
-    }
-
-    const productCodeToDelete = quotaToDelete.product_code;
-    const productName = quotaToDelete.product_name || productCodeToDelete;
-
+    if (!quotaToDelete || !userId) return;
+    const { product_code, product_name } = quotaToDelete;
     setIsLoading(true);
     setIsDeleteConfirmModalVisible(false);
-
-    const deleteSuccess = await deleteUserSelectedQuota(userId, productCodeToDelete);
-
-    if (deleteSuccess) {
-      Alert.alert('Đã xóa', `'${productName}' đã được xóa.`);
-
-      const remainingQuotas = userSelectedQuotas.filter(q => q.product_code !== productCodeToDelete);
-      const updatedQuotasWithNewZIndex = remainingQuotas.map((q, index) => ({ ...q, zindex: index }));
-      setUserSelectedQuotas(updatedQuotasWithNewZIndex);
-
-      if (updatedQuotasWithNewZIndex.length > 0) {
-        const saveOrderSuccess = await saveUserSelectedQuotasOrder(
+    const success = await deleteUserSelectedQuota(userId, product_code);
+    if (success) {
+      Alert.alert('Đã xóa', `'${product_name || product_code}' đã được xóa.`);
+      const remaining = userSelectedQuotas.filter(q => q.product_code !== product_code);
+      const updated = remaining.map((q, index) => ({ ...q, zindex: index }));
+      setUserSelectedQuotas(updated);
+      if (updated.length > 0) {
+        await saveUserSelectedQuotasOrder(
           userId,
-          updatedQuotasWithNewZIndex.map(q => ({ product_code: q.product_code, zindex: q.zindex }))
+          updated.map(q => ({ product_code: q.product_code, zindex: q.zindex }))
         );
-        if (!saveOrderSuccess) {
-          console.error('[SettingScreen] Failed to save order of remaining items post-delete.');
-          Alert.alert('Lỗi cập nhật thứ tự', 'Xóa thành công nhưng không thể cập nhật lại thứ tự các mục còn lại.');
-        }
       }
     } else {
       Alert.alert('Lỗi', 'Không thể xóa định mức. Vui lòng thử lại.');
@@ -328,55 +269,63 @@ export default function SettingScreen() {
   };
 
   const renderQuotaItem = ({ item, drag, isActive }: RenderItemParams<UserSelectedQuota>): React.ReactNode => {
+    const isExpanded = expandedProductCode === item.product_code;
+    const details = quotaDetailsMap.get(item.product_code);
+
+    const handlePress = () => {
+      if (isEditMode) return;
+      setExpandedProductCode(isExpanded ? null : item.product_code);
+    };
+
     return (
       <ScaleDecorator>
-        <TouchableOpacity
-          onLongPress={isEditMode ? drag : undefined}
-          disabled={isActive || !isEditMode}
-          style={[styles.itemContainer, isActive && styles.itemActive, !isEditMode && styles.itemNonEditable]}
-        >
-          {isEditMode && (
-            <TouchableOpacity
-              onPress={() => {
-                handleDeleteQuotaPress(item.product_code);
-              }}
-              style={styles.deleteButton}
-              hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-            >
-              <Ionicons name="remove-circle" size={26} color={theme.colors.danger} />
-            </TouchableOpacity>
-          )}
-          {!isEditMode && (
-            <View
-              style={{
-                width: styles.deleteButton.paddingHorizontal
-                  ? 26 + (styles.deleteButton.paddingHorizontal as number) * 2
-                  : 26,
-                marginRight: styles.deleteButton.marginRight,
-              }}
-            />
-          )}
+        <View style={styles.itemOuterContainer}>
+          <TouchableOpacity
+            onPress={handlePress}
+            onLongPress={isEditMode ? drag : undefined}
+            disabled={isActive}
+            style={[styles.itemContainer, isActive && styles.itemActive]}
+          >
+            {isEditMode && (
+              <TouchableOpacity onPress={() => handleDeleteQuotaPress(item)} style={styles.deleteButton}>
+                <Ionicons name="remove-circle" size={26} color={theme.colors.danger} />
+              </TouchableOpacity>
+            )}
 
-          <View style={styles.itemTextContainer}>
-            <Text style={styles.itemProductCode}>{item.product_code}</Text>
-            <Text style={styles.itemProductName}>{item.product_name || '(Chưa có tên)'}</Text>
-          </View>
+            <View style={styles.codeBox}>
+              <Text style={styles.codeText}>{item.product_code}</Text>
+            </View>
 
-          {isEditMode ? (
-            <TouchableOpacity
-              onPressIn={drag}
-              disabled={isActive}
-              style={styles.dragHandle}
-              hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-            >
-              <Ionicons name="reorder-three-outline" size={30} color={theme.colors.grey} />
-            </TouchableOpacity>
-          ) : (
-            <View
-              style={{ width: Platform.OS === 'web' ? 40 : 30, marginLeft: styles.dragHandle.marginLeft as number }}
-            />
+            <View style={styles.infoContainer}>
+              <Text style={styles.itemProductName} numberOfLines={2}>
+                {item.product_name || '(Chưa có tên)'}
+              </Text>
+            </View>
+
+            {isEditMode && (
+              <View style={styles.dragHandleContainer}>
+                <TouchableOpacity onPressIn={drag} disabled={isActive} style={styles.dragHandle}>
+                  <Ionicons name="reorder-three-outline" size={30} color={theme.colors.grey} />
+                </TouchableOpacity>
+              </View>
+            )}
+          </TouchableOpacity>
+
+          {isExpanded && details && (
+            <View style={styles.detailsContainer}>
+              {SALARY_LEVELS.map((level, index) => {
+                const quotaValue = details[level.key] as number | null | undefined;
+                const isLastRow = index === SALARY_LEVELS.length - 1;
+                return (
+                  <View key={level.key} style={[styles.quotaRow, isLastRow && styles.quotaRowLast]}>
+                    <Text style={styles.quotaLabel}>{level.label}:</Text>
+                    <Text style={styles.quotaValue}>{quotaValue?.toLocaleString() ?? 'N/A'}</Text>
+                  </View>
+                );
+              })}
+            </View>
           )}
-        </TouchableOpacity>
+        </View>
       </ScaleDecorator>
     );
   };
@@ -385,9 +334,6 @@ export default function SettingScreen() {
     return (
       <View style={styles.centered}>
         <ActivityIndicator size="large" color={theme.colors.primary} />
-        <Text style={{ color: theme.colors.textSecondary, marginTop: theme.spacing['level-2'] }}>
-          Đang tải dữ liệu...
-        </Text>
       </View>
     );
   }
@@ -401,23 +347,18 @@ export default function SettingScreen() {
         </View>
       ) : (
         <DraggableFlatList
+          testID="settings-scroll-view"
+          showsVerticalScrollIndicator={false}
           data={userSelectedQuotas}
           renderItem={renderQuotaItem}
           keyExtractor={item => item.product_code}
           onDragEnd={({ data: reorderedData }) => {
-            const updatedDataWithNewZIndex = reorderedData.map((q, index) => ({
-              ...q,
-              zindex: index,
-            }));
+            const updatedDataWithNewZIndex = reorderedData.map((q, index) => ({ ...q, zindex: index }));
             setUserSelectedQuotas(updatedDataWithNewZIndex);
           }}
           containerStyle={{ flex: 1, paddingTop: theme.spacing['level-2'] }}
           ListFooterComponent={<View style={{ height: isEditMode ? theme.spacing['level-4'] : 90 }} />}
           activationDistance={Platform.OS === 'web' ? 5 : 10}
-          // ================== THÊM PROP ĐỂ ẨN SCROLLBAR ==================
-          showsVerticalScrollIndicator={false}
-          testID="settings-scroll-view"
-          // ===============================================================
         />
       )}
 
@@ -444,19 +385,30 @@ export default function SettingScreen() {
               style={{ marginVertical: theme.spacing['level-2'] }}
             />
           )}
-          {productSearchMessage && (
-            <Text
-              style={[
-                styles.productSearchMessage,
-                productSearchMessageType === 'success' && styles.successText,
-                productSearchMessageType === 'error' && styles.errorTextModal,
-              ]}
-            >
-              {productSearchMessage}
-            </Text>
+
+          {foundProduct && !isSearchingProduct && (
+            <View style={styles.modalProductDetails}>
+              <Text style={styles.foundProductName}>{foundProduct.product_name}</Text>
+              <View>
+                {SALARY_LEVELS.map(level => {
+                  const quotaValue = foundProduct[level.key] as number | null | undefined;
+                  return (
+                    <View key={level.key} style={styles.modalQuotaRow}>
+                      <Text style={styles.quotaLabel}>{level.label}:</Text>
+                      <Text style={styles.quotaValue}>{quotaValue ?? 'N/A'}</Text>
+                    </View>
+                  );
+                })}
+              </View>
+            </View>
           )}
+
+          {!foundProduct && productSearchMessage && !isSearchingProduct && (
+            <Text style={styles.errorTextModal}>{productSearchMessage}</Text>
+          )}
+
           <View style={styles.modalActions}>
-            {/* <Button title="Hủy" onPress={handleCloseAddModal} type="secondary" style={styles.modalButton} /> */}
+            <Button title="Hủy" onPress={handleCloseAddModal} type="secondary" style={styles.modalButton} />
             <Button
               title={isLoading ? 'Đang thêm...' : 'Thêm vào danh sách'}
               onPress={handleAddProduct}
@@ -501,21 +453,6 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: theme.colors.background2,
   },
-  customModalHeaderContainer: {
-    paddingBottom: theme.spacing['level-4'],
-    marginBottom: theme.spacing['level-4'],
-    borderBottomWidth: 1,
-    borderBottomColor: theme.colors.borderColor,
-    alignItems: 'center',
-  },
-  customModalHeaderText: {
-    fontSize: theme.typography.fontSize['level-4'],
-    fontWeight: theme.typography.fontWeight['bold'],
-    color: theme.colors.text,
-  },
-  modalInnerContent: {
-    paddingHorizontal: theme.spacing['level-1'],
-  },
   centered: {
     flex: 1,
     justifyContent: 'center',
@@ -528,52 +465,90 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     marginBottom: theme.spacing['level-2'],
   },
-  itemContainer: {
-    backgroundColor: theme.colors.cardBackground,
-    paddingVertical: theme.spacing['level-4'],
-    paddingHorizontal: theme.spacing['level-4'],
+  itemOuterContainer: {
     marginHorizontal: theme.spacing['level-4'],
     marginVertical: theme.spacing['level-1'] + 2,
+    backgroundColor: theme.colors.cardBackground,
     borderRadius: theme.borderRadius['level-4'],
+    ...theme.shadow.sm,
+    overflow: 'hidden',
+  },
+  itemContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'space-between',
-    ...theme.shadow.sm,
-    borderWidth: 1,
     borderColor: theme.colors.borderColor,
+    overflow: 'hidden',
   },
   itemActive: {
-    ...theme.shadow.lg,
-    backgroundColor: theme.colors.background1,
     borderColor: theme.colors.primary,
   },
-  itemNonEditable: {},
-  itemTextContainer: {
-    flex: 1,
+  deleteButton: {
+    paddingHorizontal: theme.spacing['level-3'],
+    alignSelf: 'stretch',
+    justifyContent: 'center',
   },
-  itemProductCode: {
-    fontSize: theme.typography.fontSize['level-5'],
-    fontWeight: theme.typography.fontWeight['bold'],
+  codeBox: {
+    width: 100,
+    height: 70,
+    backgroundColor: theme.colors.background1,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  codeText: {
+    fontSize: theme.typography.fontSize['level-6'],
+    fontWeight: 'bold',
     color: theme.colors.primary,
+  },
+  infoContainer: {
+    flex: 1,
+    paddingVertical: theme.spacing['level-2'],
+    paddingHorizontal: theme.spacing['level-3'],
   },
   itemProductName: {
     fontSize: theme.typography.fontSize['level-3'],
-    color: theme.colors.textSecondary,
-    marginTop: theme.spacing['level-1'],
+    color: theme.colors.text,
   },
-  deleteButton: {
-    paddingHorizontal: theme.spacing['level-2'],
-    paddingVertical: theme.spacing['level-1'],
-    marginRight: theme.spacing['level-2'],
+  dragHandleContainer: {
+    width: 44,
+    height: 70,
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingRight: theme.spacing['level-2'],
   },
   dragHandle: {
-    paddingHorizontal: theme.spacing['level-2'],
-    paddingVertical: theme.spacing['level-1'],
-    marginLeft: theme.spacing['level-2'],
+    padding: theme.spacing['level-2'],
+  },
+  detailsContainer: {
+    borderColor: theme.colors.borderColor,
+    borderTopWidth: 0,
+  },
+  quotaRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    borderTopWidth: 1,
+    borderTopColor: theme.colors.borderColor,
+  },
+  quotaRowLast: {},
+  quotaLabel: {
+    width: 100,
+    fontSize: theme.typography.fontSize['level-3'],
+    color: theme.colors.textSecondary,
+    backgroundColor: theme.colors.background1,
+    padding: theme.spacing['level-3'],
+  },
+  quotaValue: {
+    fontSize: theme.typography.fontSize['level-3'],
+    fontWeight: 'bold',
+    color: theme.colors.text,
+    paddingRight: theme.spacing['level-3'],
   },
   addButton: {
     marginHorizontal: theme.spacing['level-6'],
     marginVertical: theme.spacing['level-4'],
+  },
+  modalInnerContent: {
+    paddingHorizontal: theme.spacing['level-1'],
   },
   modalActions: {
     flexDirection: 'row',
@@ -583,19 +558,46 @@ const styles = StyleSheet.create({
   },
   modalButton: {
     flex: 1,
+    marginHorizontal: theme.spacing['level-2'],
   },
-  productSearchMessage: {
+  customModalHeaderContainer: {
+    paddingBottom: theme.spacing['level-4'],
+    marginBottom: theme.spacing['level-4'],
+    borderBottomWidth: 1,
+    borderBottomColor: theme.colors.borderColor,
+    alignItems: 'center',
+  },
+  customModalHeaderText: {
+    fontSize: theme.typography.fontSize['level-4'],
+    fontWeight: 'bold',
+    color: theme.colors.text,
+  },
+  modalProductDetails: {
+    marginTop: theme.spacing['level-4'],
+    padding: theme.spacing['level-4'],
+    backgroundColor: theme.colors.background1,
+    borderRadius: theme.borderRadius['level-4'],
+  },
+  foundProductName: {
+    fontSize: theme.typography.fontSize['level-4'],
+    fontWeight: 'bold',
+    color: theme.colors.primary,
+    textAlign: 'center',
+    marginBottom: theme.spacing['level-4'],
+  },
+  modalQuotaRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    paddingVertical: theme.spacing['level-1'],
+    borderBottomWidth: 0.5,
+    borderBottomColor: theme.colors.background2,
+  },
+  errorTextModal: {
     fontSize: theme.typography.fontSize['level-3'],
     textAlign: 'center',
     marginVertical: theme.spacing['level-2'],
     padding: theme.spacing['level-2'],
     borderRadius: theme.borderRadius['level-2'],
-    backgroundColor: theme.colors.background1,
-  },
-  successText: {
-    color: theme.colors.success,
-  },
-  errorTextModal: {
     color: theme.colors.danger,
   },
   confirmDeleteModalContainer: {
@@ -604,7 +606,7 @@ const styles = StyleSheet.create({
   },
   confirmDeleteTitle: {
     fontSize: theme.typography.fontSize['level-6'],
-    fontWeight: theme.typography.fontWeight['bold'],
+    fontWeight: 'bold',
     color: theme.colors.text,
     marginBottom: theme.spacing['level-4'],
     textAlign: 'center',
