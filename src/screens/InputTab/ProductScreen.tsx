@@ -70,13 +70,18 @@ export default function ProductScreen() {
   const navigation = useNavigation<ProductScreenNavigationProp>();
 
   const [isLoading, setIsLoading] = useState(true);
+  const [userId, setUserId] = useState<string | null>(null);
   const [userSelectedQuotas, setUserSelectedQuotas] = useState<UserSelectedQuota[]>([]);
   const [userProfile, setUserProfile] = useState<Profile | null>(null);
   const [estronWeekInfo, setEstronWeekInfo] = useState<ReturnType<typeof getCurrentEstronWeekInfo> | null>(null);
   const [processedWeeksData, setProcessedWeeksData] = useState<ProcessedWeekData[]>([]);
   const [currentPage, setCurrentPage] = useState(0);
+
+  // State mới để quản lý tháng
+  const [targetDate, setTargetDate] = useState<Date>(getToday());
+  const [isViewingPreviousMonth, setIsViewingPreviousMonth] = useState(false);
+
   const [selectedDateForInput, setSelectedDateForInput] = useState<string>(formatToYYYYMMDD(getToday()));
-  const [userId, setUserId] = useState<string | null>(null);
   const [isSaving, setIsSaving] = useState(false);
   const [isProductModalVisible, setIsProductModalVisible] = useState(false);
   const [isEditModalVisible, setIsEditModalVisible] = useState(false);
@@ -84,9 +89,6 @@ export default function ProductScreen() {
   const [isCustomAlertVisible, setIsCustomAlertVisible] = useState(false);
   const [customAlertMessage, setCustomAlertMessage] = useState('');
   const [customAlertButtons, setCustomAlertButtons] = useState<AlertButtonType[]>([]);
-
-  const [targetDate, setTargetDate] = useState<Date>(getToday());
-  const [isViewingPreviousMonth, setIsViewingPreviousMonth] = useState(false);
 
   const showAlert = (message: string, buttons?: AlertButtonType[]) => {
     setCustomAlertMessage(message);
@@ -110,202 +112,208 @@ export default function ProductScreen() {
     fetchUser();
   }, []);
 
-  const loadDataForDate = useCallback(
-    async (dateForFilter: Date, isViewingPrev: boolean) => {
-      if (!userId) return;
-      setIsLoading(true);
-      try {
-        const currentEstronInfo = getCurrentEstronWeekInfo(dateForFilter);
-        setEstronWeekInfo(currentEstronInfo);
-        const productionPromise = getProductionEntriesByDateRange(
-          userId,
-          formatToYYYYMMDD(currentEstronInfo.estronMonth.startDate),
-          formatToYYYYMMDD(currentEstronInfo.estronMonth.endDate)
-        );
-        const suppDataPromise = getSupplementaryDataByDateRange(
-          userId,
-          formatToYYYYMMDD(currentEstronInfo.estronMonth.startDate),
-          formatToYYYYMMDD(currentEstronInfo.estronMonth.endDate)
-        );
-        const [profileData, selectedQuotasData, productionEntriesFromSupabase, supplementaryDataForMonth] =
-          await Promise.all([getUserProfile(userId), getUserSelectedQuotas(userId), productionPromise, suppDataPromise]);
-        setUserProfile(profileData);
-        setUserSelectedQuotas(selectedQuotasData);
-        const supplementaryDataMap = new Map<string, DailySupplementaryData>();
-        supplementaryDataForMonth.forEach(data => {
-          if (data.date) {
-            supplementaryDataMap.set(data.date, data);
-          }
-        });
-        const allQuotaSettingsNeededCodes = selectedQuotasData.map(usq => usq.product_code);
-        const quotaSettingsMap = new Map<string, QuotaSetting>();
-        if (allQuotaSettingsNeededCodes.length > 0) {
-          const settingsPromises = allQuotaSettingsNeededCodes.map(pc => getQuotaSettingByProductCode(pc));
-          const settingsResults = await Promise.all(settingsPromises);
-          settingsResults.forEach(qs => {
-            if (qs) quotaSettingsMap.set(qs.product_code, qs);
-          });
-        }
-        const weeksToProcess = currentEstronInfo.allWeeksInMonth;
-        if (weeksToProcess && weeksToProcess.length > 0) {
-          const weeksData: ProcessedWeekData[] = weeksToProcess
-            .map(week => {
-              let totalWeeklyWorkAcc = 0;
-              const daysInWeekToDisplay = week.days.filter(dayDate => {
-                if (isViewingPrev) {
-                  return true;
-                }
-                return new Date(dayDate) <= getToday();
-              });
+  const loadInitialData = useCallback(async (dateForData: Date) => {
+    if (!userId) return;
+    setIsLoading(true);
+    try {
+      const today = getToday();
+      const currentEstronInfo = getCurrentEstronWeekInfo(dateForData);
+      setEstronWeekInfo(currentEstronInfo);
 
-              const dailyDataForWeek: DailyProductionData[] = daysInWeekToDisplay.map(dayDate => {
-                const yyyymmdd = formatToYYYYMMDD(dayDate);
-                const entriesForDay = productionEntriesFromSupabase.filter(entry => entry.date === yyyymmdd);
-                const suppDataForDay = supplementaryDataMap.get(yyyymmdd);
-                let totalDailyWork = 0;
-                const dailyEntries = entriesForDay.map(entry => {
-                  const quotaSetting = quotaSettingsMap.get(entry.product_code);
-                  let workAmount = 0;
-                  if (quotaSetting && profileData?.salary_level && entry.quantity != null) {
-                    const dailyQuota = getQuotaValueBySalaryLevel(quotaSetting, profileData.salary_level);
-                    if (dailyQuota > 0) {
-                      workAmount = entry.quantity / dailyQuota;
-                    }
+      const { startDate, endDate } = currentEstronInfo.estronMonth;
+
+      const [profileData, selectedQuotasData, productionEntriesFromSupabase, supplementaryDataForMonth] =
+        await Promise.all([
+            getUserProfile(userId),
+            getUserSelectedQuotas(userId),
+            getProductionEntriesByDateRange(userId, formatToYYYYMMDD(startDate), formatToYYYYMMDD(endDate)),
+            getSupplementaryDataByDateRange(userId, formatToYYYYMMDD(startDate), formatToYYYYMMDD(endDate))
+        ]);
+        
+      setUserProfile(profileData);
+      setUserSelectedQuotas(selectedQuotasData);
+
+      const supplementaryDataMap = new Map<string, DailySupplementaryData>();
+      supplementaryDataForMonth.forEach(data => {
+        if (data.date) {
+          supplementaryDataMap.set(data.date, data);
+        }
+      });
+
+      const allQuotaSettingsNeededCodes = selectedQuotasData.map(usq => usq.product_code);
+      const quotaSettingsMap = new Map<string, QuotaSetting>();
+      if (allQuotaSettingsNeededCodes.length > 0) {
+        const settingsPromises = allQuotaSettingsNeededCodes.map(pc => getQuotaSettingByProductCode(pc));
+        const settingsResults = await Promise.all(settingsPromises);
+        settingsResults.forEach(qs => {
+          if (qs) quotaSettingsMap.set(qs.product_code, qs);
+        });
+      }
+
+      const weeksToProcess = currentEstronInfo.allWeeksInMonth;
+      if (weeksToProcess && weeksToProcess.length > 0) {
+        const weeksData: ProcessedWeekData[] = weeksToProcess
+          .map(week => {
+            let totalWeeklyWorkAcc = 0;
+            const daysInWeekToDisplay = isViewingPreviousMonth
+              ? week.days
+              : week.days.filter(dayDate => new Date(dayDate) <= today);
+
+            const dailyDataForWeek: DailyProductionData[] = daysInWeekToDisplay.map(dayDate => {
+              const yyyymmdd = formatToYYYYMMDD(dayDate);
+              const entriesForDay = productionEntriesFromSupabase.filter(entry => entry.date === yyyymmdd);
+              const suppDataForDay = supplementaryDataMap.get(yyyymmdd);
+              let totalDailyWork = 0;
+              const dailyEntries = entriesForDay.map(entry => {
+                const quotaSetting = quotaSettingsMap.get(entry.product_code);
+                let workAmount = 0;
+                if (quotaSetting && profileData?.salary_level && entry.quantity != null) {
+                  const dailyQuota = getQuotaValueBySalaryLevel(quotaSetting, profileData.salary_level);
+                  if (dailyQuota > 0) {
+                    workAmount = entry.quantity / dailyQuota;
                   }
-                  totalDailyWork += workAmount;
-                  return {
-                    id: entry.id,
-                    stageCode: entry.product_code,
-                    quantity: entry.quantity || 0,
-                    workAmount: parseFloat(workAmount.toFixed(2)),
-                    po: entry.po,
-                    box: entry.box,
-                    batch: entry.batch,
-                    verified: entry.verified,
-                  };
-                });
-                totalWeeklyWorkAcc += totalDailyWork;
+                }
+                totalDailyWork += workAmount;
                 return {
-                  date: yyyymmdd,
-                  dayOfWeek: getDayOfWeekVietnamese(dayDate),
-                  formattedDate: formatDate(dayDate, 'dd/MM'),
-                  entries: dailyEntries,
-                  totalWorkForDay: parseFloat(totalDailyWork.toFixed(2)),
-                  supplementaryData: suppDataForDay,
+                  id: entry.id,
+                  stageCode: entry.product_code,
+                  quantity: entry.quantity || 0,
+                  workAmount: parseFloat(workAmount.toFixed(2)),
+                  po: entry.po,
+                  box: entry.box,
+                  batch: entry.batch,
+                  verified: entry.verified,
                 };
               });
+              totalWeeklyWorkAcc += totalDailyWork;
               return {
-                weekInfo: week,
-                dailyData: dailyDataForWeek,
-                totalWeeklyWork: parseFloat(totalWeeklyWorkAcc.toFixed(2)),
+                date: yyyymmdd,
+                dayOfWeek: getDayOfWeekVietnamese(dayDate),
+                formattedDate: formatDate(dayDate, 'dd/MM'),
+                entries: dailyEntries,
+                totalWorkForDay: parseFloat(totalDailyWork.toFixed(2)),
+                supplementaryData: suppDataForDay,
               };
-            })
-            .filter(weekData => weekData.dailyData.length > 0);
-          setProcessedWeeksData(weeksData);
-          if (weeksData.length > 0) {
-            if (currentEstronInfo.currentWeek && !isViewingPrev) {
-              const todayWeekIndex = weeksData.findIndex(
-                w =>
-                  w.weekInfo.name === currentEstronInfo.currentWeek!.name &&
-                  w.weekInfo.startDate.getTime() === currentEstronInfo.currentWeek!.startDate.getTime()
-              );
-              setCurrentPage(todayWeekIndex !== -1 ? todayWeekIndex : weeksData.length - 1);
-            } else {
-              setCurrentPage(weeksData.length - 1);
-            }
+            });
+            return {
+              weekInfo: week,
+              dailyData: dailyDataForWeek,
+              totalWeeklyWork: parseFloat(totalWeeklyWorkAcc.toFixed(2)),
+            };
+          })
+          .filter(weekData => weekData.dailyData.length > 0);
+        setProcessedWeeksData(weeksData);
+
+        if (weeksData.length > 0) {
+          if (isViewingPreviousMonth) {
+            setCurrentPage(weeksData.length - 1);
+          } else if (currentEstronInfo.currentWeek) {
+            const todayWeekIndex = weeksData.findIndex(
+              w =>
+                w.weekInfo.name === currentEstronInfo.currentWeek!.name &&
+                w.weekInfo.startDate.getTime() === currentEstronInfo.currentWeek!.startDate.getTime()
+            );
+            setCurrentPage(todayWeekIndex !== -1 ? todayWeekIndex : weeksData.length - 1);
           } else {
-            setProcessedWeeksData([]);
-            setCurrentPage(0);
+            setCurrentPage(weeksData.length - 1);
           }
         } else {
           setProcessedWeeksData([]);
+          setCurrentPage(0);
         }
-      } catch (error) {
-        console.error('ProductScreen: Error loading data for date:', error);
-        showAlert('Không thể tải dữ liệu màn hình sản phẩm.');
-      } finally {
-        setIsLoading(false);
+      } else {
+        setProcessedWeeksData([]);
       }
-    },
-    [userId]
-  );
+    } catch (error) {
+      console.error('ProductScreen: Error loading initial data:', error);
+      showAlert('Không thể tải dữ liệu màn hình sản phẩm.');
+    } finally {
+      setIsLoading(false);
+    }
+  }, [userId, isViewingPreviousMonth]);
+
+  const handleNavigateToPreviousMonth = useCallback(() => {
+    if (estronWeekInfo) {
+        const previousMonthDate = addDays(estronWeekInfo.estronMonth.startDate, -1);
+        setIsViewingPreviousMonth(true);
+        setTargetDate(previousMonthDate);
+    }
+  }, [estronWeekInfo]);
+
+  const handleNavigateToCurrentMonth = useCallback(() => {
+      setIsViewingPreviousMonth(false);
+      setTargetDate(getToday());
+  }, []);
 
   useFocusEffect(
     useCallback(() => {
       if (userId) {
-        loadDataForDate(targetDate, isViewingPreviousMonth);
+        loadInitialData(targetDate);
       }
-    }, [userId, loadDataForDate, targetDate, isViewingPreviousMonth])
+    }, [userId, loadInitialData, targetDate])
   );
 
-  const handleNavigateToPreviousMonth = useCallback(() => {
-    if (!estronWeekInfo) return;
-    const currentMonthStartDate = estronWeekInfo.estronMonth.startDate;
-    const previousMonthDate = addDays(currentMonthStartDate, -1);
-    setIsViewingPreviousMonth(true);
-    setTargetDate(previousMonthDate);
-    loadDataForDate(previousMonthDate, true);
-  }, [estronWeekInfo, loadDataForDate]);
-
-  const handleNavigateToCurrentMonth = useCallback(() => {
-    const today = getToday();
-    setIsViewingPreviousMonth(false);
-    setTargetDate(today);
-    loadDataForDate(today, false);
-  }, [loadDataForDate]);
-
   useLayoutEffect(() => {
-    navigation.setOptions({
-      title: estronWeekInfo ? `Sản lượng tháng ${estronWeekInfo.estronMonth.estronMonth}` : 'Sản Lượng Estron',
-      headerLeft: () => (
-        <TouchableOpacity
-          onPress={isViewingPreviousMonth ? handleNavigateToCurrentMonth : handleNavigateToPreviousMonth}
-          style={{
-            marginLeft: Platform.OS === 'ios' ? theme.spacing['level-2'] : theme.spacing['level-4'],
-            padding: theme.spacing['level-1'],
-          }}
-        >
-          <Ionicons
-            name={isViewingPreviousMonth ? 'arrow-forward-circle-outline' : 'arrow-back-circle-outline'}
-            size={28}
-            color={theme.colors.textOnPrimary}
-          />
-        </TouchableOpacity>
-      ),
-      headerRight: () => (
-        <TouchableOpacity
-          onPress={() => navigation.navigate('Settings')}
-          style={{
-            marginRight: Platform.OS === 'ios' ? theme.spacing['level-2'] : theme.spacing['level-4'],
-            padding: theme.spacing['level-1'],
-          }}
-        >
-          <Ionicons name="settings-outline" size={24} color={theme.colors.textOnPrimary} />
-        </TouchableOpacity>
-      ),
-    });
-  }, [navigation, estronWeekInfo, isViewingPreviousMonth, handleNavigateToCurrentMonth, handleNavigateToPreviousMonth]);
+    if (estronWeekInfo) {
+      navigation.setOptions({
+        title: `Sản lượng tháng ${estronWeekInfo.estronMonth.estronMonth}`,
+        headerLeft: () => (
+          <TouchableOpacity
+            onPress={isViewingPreviousMonth ? handleNavigateToCurrentMonth : handleNavigateToPreviousMonth}
+            style={{ marginLeft: Platform.OS === 'ios' ? theme.spacing['level-2'] : theme.spacing['level-4'], padding: theme.spacing['level-1'] }}
+          >
+            <Ionicons
+              name={isViewingPreviousMonth ? "caret-forward" : "caret-back"}
+              size={26}
+              color={theme.colors.textOnPrimary}
+            />
+          </TouchableOpacity>
+        ),
+      });
+    } else {
+      navigation.setOptions({
+        title: 'Sản Lượng Estron',
+        headerLeft: () => null,
+      });
+    }
+  }, [navigation, estronWeekInfo, isViewingPreviousMonth, handleNavigateToPreviousMonth, handleNavigateToCurrentMonth]);
 
   useEffect(() => {
     if (!userId) {
       return;
     }
-    const channelFilter = `user_id=eq.${userId}`;
+
     const entriesChannel = supabase
-      .channel('public:entries')
+      .channel(`public:entries:user_id=eq.${userId}`)
       .on(
         'postgres_changes',
-        { event: '*', schema: 'public', table: 'entries', filter: channelFilter },
-        () => loadDataForDate(targetDate, isViewingPreviousMonth)
+        {
+          event: '*',
+          schema: 'public',
+          table: 'entries',
+          filter: `user_id=eq.${userId}`,
+        },
+        payload => {
+          console.log('Entries table change received!', payload);
+          loadInitialData(targetDate);
+        }
       )
       .subscribe();
 
     const additionalChannel = supabase
-      .channel('public:additional')
+      .channel(`public:additional:user_id=eq.${userId}`)
       .on(
         'postgres_changes',
-        { event: '*', schema: 'public', table: 'additional', filter: channelFilter },
-        () => loadDataForDate(targetDate, isViewingPreviousMonth)
+        {
+          event: '*',
+          schema: 'public',
+          table: 'additional',
+          filter: `user_id=eq.${userId}`,
+        },
+        payload => {
+          console.log('Additional table change received!', payload);
+          loadInitialData(targetDate);
+        }
       )
       .subscribe();
 
@@ -313,7 +321,7 @@ export default function ProductScreen() {
       supabase.removeChannel(entriesChannel);
       supabase.removeChannel(additionalChannel);
     };
-  }, [userId, loadDataForDate, targetDate, isViewingPreviousMonth]);
+  }, [userId, loadInitialData, targetDate]);
 
   const handleSelectProduct = async (selectedUserQuota: UserSelectedQuota) => {
     setIsProductModalVisible(false);
@@ -384,7 +392,7 @@ export default function ProductScreen() {
     if (result) {
       showAlert('Đã cập nhật thông tin sản phẩm.');
       handleCloseEditModal();
-      // loadDataForDate sẽ được trigger bởi listener supabase
+      loadInitialData(targetDate);
     } else {
       showAlert('Không thể cập nhật. Vui lòng thử lại.');
     }
@@ -400,11 +408,13 @@ export default function ProductScreen() {
         style: 'danger',
         onPress: async () => {
           closeAlert();
+          setIsSaving(true);
           const success = await deleteProductionEntry(entry.id);
+          setIsSaving(false);
           if (success) {
             showAlert('Mục sản phẩm đã được xóa.');
             handleCloseEditModal();
-             // loadDataForDate sẽ được trigger bởi listener supabase
+            loadInitialData(targetDate);
           } else {
             showAlert('Không thể xóa mục này. Vui lòng thử lại.');
           }
@@ -440,7 +450,11 @@ export default function ProductScreen() {
         <Button
           title="Thử Lại"
           onPress={() => {
-            /* ... */
+            const fetchUser = async () => {
+                const { data: { user } } = await supabase.auth.getUser();
+                if(user) setUserId(user.id);
+            };
+            fetchUser();
           }}
           style={{ marginTop: theme.spacing['level-4'] }}
         />
@@ -450,8 +464,8 @@ export default function ProductScreen() {
   if (userId && !isLoading && (!estronWeekInfo || processedWeeksData.length === 0)) {
     return (
       <View style={styles.centered}>
-        <Text style={styles.emptyText}>Không có dữ liệu tuần để hiển thị.</Text>
-        <Button title="Thử Tải Lại" onPress={() => loadDataForDate(targetDate, isViewingPreviousMonth)} style={{ marginTop: theme.spacing['level-4'] }} />
+        <Text style={styles.emptyText}>Không có dữ liệu tuần để hiển thị cho tháng này.</Text>
+        <Button title="Thử Tải Lại" onPress={() => loadInitialData(targetDate)} style={{ marginTop: theme.spacing['level-4'] }} />
       </View>
     );
   }

@@ -21,6 +21,7 @@ const commonStackScreenOptions = {
   headerStyle: { backgroundColor: theme.colors.primary }, 
   headerTintColor: theme.colors.textOnPrimary, 
   headerTitleStyle: { fontWeight: 'bold' as 'bold', fontSize: theme.typography.fontSize['level-3'] }, 
+  headerTitleAlign: 'center' as 'center',
 };
 
 function InputStack() {
@@ -32,9 +33,20 @@ function InputStack() {
       <InputTabStack.Screen
         name="ProductList"
         component={ProductScreen}
-        options={{
+        options={({ navigation }: { navigation: StackNavigationProp<InputStackNavigatorParamList, 'ProductList'> }) => ({
           title: 'Sản Lượng Estron',
-        }}
+          headerRight: () => (
+            <TouchableOpacity
+              onPress={() => navigation.navigate('Settings')}
+              style={{
+                marginRight: Platform.OS === 'ios' ? theme.spacing['level-2'] : theme.spacing['level-4'], 
+                padding: theme.spacing['level-1'], 
+              }}
+            >
+              <Ionicons name="settings-outline" size={24} color={theme.colors.textOnPrimary} /> 
+            </TouchableOpacity>
+          ),
+        })}
       />
       <InputTabStack.Screen
         name="InputDetails"
