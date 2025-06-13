@@ -98,7 +98,6 @@ export default function SignUpScreen() {
         value={salaryLevel}
         onChangeText={setSalaryLevel}
         placeholder="Nhập bậc lương (ví dụ: 2.0)"
-        keyboardType="numeric"
       />
       <TextInput
         label="Mật khẩu"
