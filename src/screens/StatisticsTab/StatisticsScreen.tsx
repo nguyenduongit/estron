@@ -14,6 +14,7 @@ import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import type { BottomTabNavigationProp } from '@react-navigation/bottom-tabs';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import * as Clipboard from 'expo-clipboard';
+import { isBefore } from 'date-fns';
 
 import { BottomTabNavigatorParamList } from '../../navigation/types';
 import { theme } from '../../theme';
@@ -22,8 +23,15 @@ import {
   getToday,
   formatDate,
   EstronWeekPeriod,
+  formatToYYYYMMDD,
+  getDay,
+  eachDayOfInterval,
 } from '../../utils/dateUtils';
-import { getStatisticsRPC } from '../../services/storage';
+import {
+  getStatisticsRPC,
+  getProductionEntriesByDateRange,
+  getSupplementaryDataByDateRange,
+} from '../../services/storage';
 import { supabase } from '../../services/supabase';
 import Button from '../../components/common/Button';
 import ModalWrapper from '../../components/common/ModalWrapper';
@@ -90,6 +98,7 @@ export default function StatisticsScreen() {
   const [totalMeetingMinutes, setTotalMeetingMinutes] = useState<number>(0);
   const [isAuthorModalVisible, setIsAuthorModalVisible] = useState(false);
   const [weeklyStatistics, setWeeklyStatistics] = useState<WeeklyStatistics[]>([]);
+  const [missingDataDays, setMissingDataDays] = useState<Date[]>([]);
 
   const handleShowAuthorModal = useCallback(() => setIsAuthorModalVisible(true), []);
   const handleCloseAuthorModal = useCallback(() => setIsAuthorModalVisible(false), []);
@@ -120,17 +129,17 @@ export default function StatisticsScreen() {
   useLayoutEffect(() => {
     navigation.setOptions({
       title: currentEstronMonth?.estronMonth ? `Thống kê tháng ${currentEstronMonth.estronMonth}` : 'Thống Kê Chung',
-      headerRight: () => (
-        <TouchableOpacity
-          onPress={handleShowAuthorModal}
-          style={{
-            marginRight: Platform.OS === 'ios' ? theme.spacing['level-4'] : theme.spacing['level-4'],
-            padding: theme.spacing['level-1'],
-          }}
-        >
-          <Ionicons name="information-circle-outline" size={26} color={theme.colors.white} />
-        </TouchableOpacity>
-      ),
+      // headerRight: () => (
+      //   <TouchableOpacity
+      //     onPress={handleShowAuthorModal}
+      //     style={{
+      //       marginRight: Platform.OS === 'ios' ? theme.spacing['level-4'] : theme.spacing['level-4'],
+      //       padding: theme.spacing['level-1'],
+      //     }}
+      //   >
+      //     <Ionicons name="information-circle-outline" size={26} color={theme.colors.white} />
+      //   </TouchableOpacity>
+      // ),
     });
   }, [navigation, currentEstronMonth, handleShowAuthorModal]);
 
@@ -140,6 +149,7 @@ export default function StatisticsScreen() {
     }
     setIsLoading(true);
     setErrorLoading(null);
+    setMissingDataDays([]);
     try {
       const today = getToday();
       const stats = await getStatisticsRPC(userId, today);
@@ -155,6 +165,35 @@ export default function StatisticsScreen() {
         setTotalLeaveDays(stats.totalLeaveDays);
         setTotalMeetingMinutes(stats.totalMeetingMinutes);
         setWeeklyStatistics(stats.weeklyStatistics || []);
+
+        if (stats.monthInfo) {
+          const startDate = stats.monthInfo.startDate;
+          const endDate = isBefore(today, stats.monthInfo.endDate) ? today : stats.monthInfo.endDate;
+
+          const [productionEntries, supplementaryData] = await Promise.all([
+            getProductionEntriesByDateRange(userId, formatToYYYYMMDD(startDate), formatToYYYYMMDD(endDate)),
+            getSupplementaryDataByDateRange(userId, formatToYYYYMMDD(startDate), formatToYYYYMMDD(endDate)),
+          ]);
+
+          const productionDates = new Set(productionEntries.map(e => e.date));
+          const supplementaryDates = new Set(supplementaryData.map(d => d.date));
+          const allDaysInPeriod = eachDayOfInterval({ start: startDate, end: endDate });
+          const missingDays: Date[] = [];
+          
+          for (const day of allDaysInPeriod) {
+            // Bỏ qua ngày Chủ Nhật
+            if (getDay(day) === 0) {
+              continue;
+            }
+            const dateString = formatToYYYYMMDD(day);
+            const hasProduction = productionDates.has(dateString);
+            const hasSupplementary = supplementaryDates.has(dateString);
+            if (!hasProduction && !hasSupplementary) {
+              missingDays.push(day);
+            }
+          }
+          setMissingDataDays(missingDays);
+        }
       } else {
         setErrorLoading('Không thể tải dữ liệu thống kê.');
       }
@@ -275,6 +314,15 @@ export default function StatisticsScreen() {
         <View style={styles.footerContainer}>
           {renderFooter()}
         </View>
+        {missingDataDays.length > 0 && (
+          <View style={styles.warningContainer}>
+            {missingDataDays.map(day => (
+              <Text key={day.toISOString()} style={styles.warningText}>
+                (Dữ liệu ngày {formatDate(day, 'dd/MM')} chưa được nhập!)
+              </Text>
+            ))}
+          </View>
+        )}
       </View>
 
       {/* --- Weekly Statistics Section --- */}
@@ -300,7 +348,6 @@ export default function StatisticsScreen() {
                                 <Text style={styles.productValueText}>{`${prodStat.total_quantity.toLocaleString()} pcs (${prodStat.total_work_done.toLocaleString()} công)`}</Text>
                             </View>
                         ))}
-                        {/* ================== BẮT ĐẦU SỬA LỖI ================== */}
                         {(weekStat.totalMeetingMinutesInWeek ?? 0) > 0 && (
                            <View style={styles.productStatRow}>
                                 <Text style={styles.productNameText}>Hỗ trợ:</Text>
@@ -309,7 +356,6 @@ export default function StatisticsScreen() {
                                 </Text>
                             </View>
                         )}
-                        {/* ================== KẾT THÚC SỬA LỖI ================== */}
                     </View>
                 </View>
             ))}
@@ -321,9 +367,6 @@ export default function StatisticsScreen() {
         <View style={styles.authorModalContainer}>
           <View style={styles.authorModalHeader}>
             <Text style={styles.authorModalTitle}>Thông tin tác giả</Text>
-            <TouchableOpacity onPress={handleCloseAuthorModal} style={styles.customCloseButton}>
-              <Ionicons name="close-circle" size={28} color={theme.colors.textSecondary} />
-            </TouchableOpacity>
           </View>
           <Text style={styles.authorText}>Ứng dụng được phát triển bởi:</Text>
           <Text style={styles.authorName}>{AUTHOR_NAME}</Text>
@@ -432,6 +475,17 @@ const styles = StyleSheet.create({
     paddingHorizontal: theme.spacing['level-4'],
     alignItems: 'center',
   },
+  warningContainer: {
+    paddingHorizontal: theme.spacing['level-4'],
+    paddingBottom: theme.spacing['level-4'],
+    alignItems: 'center',
+    width: '100%',
+  },
+  warningText: {
+    color: theme.colors.grey,
+    fontStyle: 'italic',
+    fontSize: theme.typography.fontSize['level-2'],
+  },
   footerText: {
     fontSize: theme.typography.fontSize['level-5'],
     fontWeight: theme.typography.fontWeight['bold'],
@@ -517,12 +571,6 @@ const styles = StyleSheet.create({
     fontSize: theme.typography.fontSize['level-6'],
     fontWeight: theme.typography.fontWeight['bold'],
     color: theme.colors.text,
-  },
-  customCloseButton: {
-    position: 'absolute',
-    right: -theme.spacing['level-2'],
-    top: -theme.spacing['level-2'],
-    padding: theme.spacing['level-1'],
   },
   authorText: {
     fontSize: theme.typography.fontSize['level-4'],
