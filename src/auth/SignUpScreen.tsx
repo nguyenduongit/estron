@@ -90,7 +90,7 @@ export default function SignUpScreen() {
         label="Mã nhân viên"
         value={username}
         onChangeText={setUsername}
-        placeholder="Nhập mã nhân viên (ví dụ: p713)"
+        placeholder="Nhập mã nhân viên (ví dụ: P306)"
         autoCapitalize="none"
       />
       <TextInput
