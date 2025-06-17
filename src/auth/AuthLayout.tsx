@@ -8,7 +8,7 @@ import {
   KeyboardAvoidingView,
   Platform,
 } from 'react-native';
-import { theme } from '../../theme';
+import { theme } from '../../src/theme';
 
 interface AuthLayoutProps {
   children: React.ReactNode;
@@ -38,7 +38,7 @@ const AuthLayout: React.FC<AuthLayoutProps> = ({
         <View style={styles.mainContainer}>
           <View style={styles.headerContainer}>
             {showLogo && (
-              <Image source={require('../../../assets/images/logo.png')} style={styles.logo} />
+              <Image source={require('../../assets/images/logo.png')} style={styles.logo} />
             )}
             <Text style={styles.title}>{title}</Text>
             {subtitle && <Text style={styles.subtitle}>{subtitle}</Text>}

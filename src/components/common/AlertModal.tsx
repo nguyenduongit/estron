@@ -47,7 +47,7 @@ const AlertModal: React.FC<AlertModalProps> = ({
                     button.onPress();
                   }
                 }}
-                type={button.style || 'primary'}
+                variant={button.style || 'primary'}
                 style={[
                   styles.button,
                   ...(buttons.length > 1 ? [styles.buttonWithMargin] : []),

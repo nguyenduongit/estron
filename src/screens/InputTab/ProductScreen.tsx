@@ -1,8 +1,6 @@
 // src/screens/InputTab/ProductScreen.tsx
-import React, { useState, useEffect, useCallback, useLayoutEffect, lazy, Suspense } from 'react';
-import { View, Text, StyleSheet, ActivityIndicator, Platform, ScrollView, TouchableOpacity } from 'react-native';
-import { Swiper, SwiperSlide } from 'swiper/react';
-import 'swiper/css';
+import React, { useState, useCallback, useLayoutEffect } from 'react';
+import { View, Text, StyleSheet, ActivityIndicator, Platform, TouchableOpacity, FlatList } from 'react-native';
 import type { StackNavigationProp } from '@react-navigation/stack';
 import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import Ionicons from '@expo/vector-icons/Ionicons';
@@ -10,82 +8,32 @@ import { addDays } from 'date-fns';
 
 import { InputStackNavigatorParamList } from '../../navigation/types';
 import { theme } from '../../theme';
-import {
-  ProductionEntry,
-  DailyProductionData,
-  UserSelectedQuota,
-  Profile,
-  QuotaSetting,
-  DailySupplementaryData,
-} from '../../types/data';
-import { supabase } from '../../services/supabase';
-import {
-  getProductionEntriesByDateRange,
-  getUserSelectedQuotas,
-  getUserProfile,
-  getQuotaSettingByProductCode,
-  getQuotaValueBySalaryLevel,
-  getSupplementaryDataByDateRange,
-  deleteProductionEntry,
-  updateProductionEntryById,
-} from '../../services/storage';
-import {
-  getToday,
-  getCurrentEstronWeekInfo,
-  EstronWeekPeriod,
-  formatDate,
-  formatToYYYYMMDD,
-  getDayOfWeekVietnamese,
-} from '../../utils/dateUtils';
-import WeeklyPage from './components/WeeklyPage';
+import { ProductionEntry } from '../../types/data';
+import { getToday } from '../../utils/dateUtils';
+import DailyCard from './components/DailyCard';
 import Button from '../../components/common/Button';
 import AlertModal, { AlertButtonType } from '../../components/common/AlertModal';
-import SelectProductModal from './components/SelectProductModal';
-import EditEntryModal from './components/EditEntryModal';
-
-if (Platform.OS === 'web') {
-  const styleId = 'hide-scrollbar-style';
-  if (!document.getElementById(styleId)) {
-    const style = document.createElement('style');
-    style.id = styleId;
-    style.textContent = `
-      .scrollable-slide::-webkit-scrollbar { display: none; }
-      .scrollable-slide { -ms-overflow-style: none; scrollbar-width: none; }
-    `;
-    document.head.appendChild(style);
-  }
-}
-
-const PagerView = Platform.OS !== 'web' ? lazy(() => import('react-native-pager-view')) : null;
+import { useProductionStore } from '../../stores/productionStore';
+import { useAuthStore } from '../../stores/authStore';
 
 type ProductScreenNavigationProp = StackNavigationProp<InputStackNavigatorParamList, 'ProductList'>;
-
-export interface ProcessedWeekData {
-  weekInfo: EstronWeekPeriod;
-  dailyData: DailyProductionData[];
-  totalWeeklyWork: number;
-}
 
 export default function ProductScreen() {
   const navigation = useNavigation<ProductScreenNavigationProp>();
 
-  const [isLoading, setIsLoading] = useState(true);
-  const [userId, setUserId] = useState<string | null>(null);
-  const [userSelectedQuotas, setUserSelectedQuotas] = useState<UserSelectedQuota[]>([]);
-  const [userProfile, setUserProfile] = useState<Profile | null>(null);
-  const [estronWeekInfo, setEstronWeekInfo] = useState<ReturnType<typeof getCurrentEstronWeekInfo> | null>(null);
-  const [processedWeeksData, setProcessedWeeksData] = useState<ProcessedWeekData[]>([]);
-  const [currentPage, setCurrentPage] = useState(0);
+  const {
+    userSelectedQuotas,
+    processedDaysData,
+    estronWeekInfo,
+    isLoading,
+    isViewingPreviousMonth,
+    initialize,
+    cleanup,
+    setTargetDate,
+  } = useProductionStore();
+  
+  const activeUserId = useAuthStore(state => state.authUser?.profile.id);
 
-  // State mới để quản lý tháng
-  const [targetDate, setTargetDate] = useState<Date>(getToday());
-  const [isViewingPreviousMonth, setIsViewingPreviousMonth] = useState(false);
-
-  const [selectedDateForInput, setSelectedDateForInput] = useState<string>(formatToYYYYMMDD(getToday()));
-  const [isSaving, setIsSaving] = useState(false);
-  const [isProductModalVisible, setIsProductModalVisible] = useState(false);
-  const [isEditModalVisible, setIsEditModalVisible] = useState(false);
-  const [editingEntry, setEditingEntry] = useState<ProductionEntry | null>(null);
   const [isCustomAlertVisible, setIsCustomAlertVisible] = useState(false);
   const [customAlertMessage, setCustomAlertMessage] = useState('');
   const [customAlertButtons, setCustomAlertButtons] = useState<AlertButtonType[]>([]);
@@ -97,161 +45,27 @@ export default function ProductScreen() {
   };
   const closeAlert = () => setIsCustomAlertVisible(false);
 
-  useEffect(() => {
-    const fetchUser = async () => {
-      const {
-        data: { user },
-      } = await supabase.auth.getUser();
-      if (user) {
-        setUserId(user.id);
-      } else {
-        showAlert('Không tìm thấy thông tin người dùng để tải dữ liệu.');
-        setIsLoading(false);
-      }
-    };
-    fetchUser();
-  }, []);
-
-  const loadInitialData = useCallback(async (dateForData: Date) => {
-    if (!userId) return;
-    setIsLoading(true);
-    try {
-      const today = getToday();
-      const currentEstronInfo = getCurrentEstronWeekInfo(dateForData);
-      setEstronWeekInfo(currentEstronInfo);
-
-      const { startDate, endDate } = currentEstronInfo.estronMonth;
-
-      const [profileData, selectedQuotasData, productionEntriesFromSupabase, supplementaryDataForMonth] =
-        await Promise.all([
-            getUserProfile(userId),
-            getUserSelectedQuotas(userId),
-            getProductionEntriesByDateRange(userId, formatToYYYYMMDD(startDate), formatToYYYYMMDD(endDate)),
-            getSupplementaryDataByDateRange(userId, formatToYYYYMMDD(startDate), formatToYYYYMMDD(endDate))
-        ]);
-        
-      setUserProfile(profileData);
-      setUserSelectedQuotas(selectedQuotasData);
-
-      const supplementaryDataMap = new Map<string, DailySupplementaryData>();
-      supplementaryDataForMonth.forEach(data => {
-        if (data.date) {
-          supplementaryDataMap.set(data.date, data);
-        }
-      });
-
-      const allQuotaSettingsNeededCodes = selectedQuotasData.map(usq => usq.product_code);
-      const quotaSettingsMap = new Map<string, QuotaSetting>();
-      if (allQuotaSettingsNeededCodes.length > 0) {
-        const settingsPromises = allQuotaSettingsNeededCodes.map(pc => getQuotaSettingByProductCode(pc));
-        const settingsResults = await Promise.all(settingsPromises);
-        settingsResults.forEach(qs => {
-          if (qs) quotaSettingsMap.set(qs.product_code, qs);
-        });
-      }
-
-      const weeksToProcess = currentEstronInfo.allWeeksInMonth;
-      if (weeksToProcess && weeksToProcess.length > 0) {
-        const weeksData: ProcessedWeekData[] = weeksToProcess
-          .map(week => {
-            let totalWeeklyWorkAcc = 0;
-            const daysInWeekToDisplay = isViewingPreviousMonth
-              ? week.days
-              : week.days.filter(dayDate => new Date(dayDate) <= today);
-
-            const dailyDataForWeek: DailyProductionData[] = daysInWeekToDisplay.map(dayDate => {
-              const yyyymmdd = formatToYYYYMMDD(dayDate);
-              const entriesForDay = productionEntriesFromSupabase.filter(entry => entry.date === yyyymmdd);
-              const suppDataForDay = supplementaryDataMap.get(yyyymmdd);
-              let totalDailyWork = 0;
-              const dailyEntries = entriesForDay.map(entry => {
-                const quotaSetting = quotaSettingsMap.get(entry.product_code);
-                let workAmount = 0;
-                if (quotaSetting && profileData?.salary_level && entry.quantity != null) {
-                  const dailyQuota = getQuotaValueBySalaryLevel(quotaSetting, profileData.salary_level);
-                  if (dailyQuota > 0) {
-                    workAmount = entry.quantity / dailyQuota;
-                  }
-                }
-                totalDailyWork += workAmount;
-                return {
-                  id: entry.id,
-                  stageCode: entry.product_code,
-                  quantity: entry.quantity || 0,
-                  workAmount: parseFloat(workAmount.toFixed(2)),
-                  po: entry.po,
-                  box: entry.box,
-                  batch: entry.batch,
-                  verified: entry.verified,
-                };
-              });
-              totalWeeklyWorkAcc += totalDailyWork;
-              return {
-                date: yyyymmdd,
-                dayOfWeek: getDayOfWeekVietnamese(dayDate),
-                formattedDate: formatDate(dayDate, 'dd/MM'),
-                entries: dailyEntries,
-                totalWorkForDay: parseFloat(totalDailyWork.toFixed(2)),
-                supplementaryData: suppDataForDay,
-              };
-            });
-            return {
-              weekInfo: week,
-              dailyData: dailyDataForWeek,
-              totalWeeklyWork: parseFloat(totalWeeklyWorkAcc.toFixed(2)),
-            };
-          })
-          .filter(weekData => weekData.dailyData.length > 0);
-        setProcessedWeeksData(weeksData);
-
-        if (weeksData.length > 0) {
-          if (isViewingPreviousMonth) {
-            setCurrentPage(weeksData.length - 1);
-          } else if (currentEstronInfo.currentWeek) {
-            const todayWeekIndex = weeksData.findIndex(
-              w =>
-                w.weekInfo.name === currentEstronInfo.currentWeek!.name &&
-                w.weekInfo.startDate.getTime() === currentEstronInfo.currentWeek!.startDate.getTime()
-            );
-            setCurrentPage(todayWeekIndex !== -1 ? todayWeekIndex : weeksData.length - 1);
-          } else {
-            setCurrentPage(weeksData.length - 1);
-          }
-        } else {
-          setProcessedWeeksData([]);
-          setCurrentPage(0);
-        }
-      } else {
-        setProcessedWeeksData([]);
-      }
-    } catch (error) {
-      console.error('ProductScreen: Error loading initial data:', error);
-      showAlert('Không thể tải dữ liệu màn hình sản phẩm.');
-    } finally {
-      setIsLoading(false);
-    }
-  }, [userId, isViewingPreviousMonth]);
-
-  const handleNavigateToPreviousMonth = useCallback(() => {
-    if (estronWeekInfo) {
-        const previousMonthDate = addDays(estronWeekInfo.estronMonth.startDate, -1);
-        setIsViewingPreviousMonth(true);
-        setTargetDate(previousMonthDate);
-    }
-  }, [estronWeekInfo]);
-
-  const handleNavigateToCurrentMonth = useCallback(() => {
-      setIsViewingPreviousMonth(false);
-      setTargetDate(getToday());
-  }, []);
-
   useFocusEffect(
     useCallback(() => {
-      if (userId) {
-        loadInitialData(targetDate);
+      if (activeUserId) {
+        initialize(activeUserId);
       }
-    }, [userId, loadInitialData, targetDate])
+      return () => {
+        cleanup();
+      };
+    }, [activeUserId, initialize, cleanup])
   );
+  
+  const handleNavigateToPreviousMonth = useCallback(() => {
+    if (estronWeekInfo) {
+      const previousMonthDate = addDays(estronWeekInfo.estronMonth.startDate, -1);
+      setTargetDate(previousMonthDate);
+    }
+  }, [estronWeekInfo, setTargetDate]);
+
+  const handleNavigateToCurrentMonth = useCallback(() => {
+    setTargetDate(getToday());
+  }, [setTargetDate]);
 
   useLayoutEffect(() => {
     if (estronWeekInfo) {
@@ -260,10 +74,13 @@ export default function ProductScreen() {
         headerLeft: () => (
           <TouchableOpacity
             onPress={isViewingPreviousMonth ? handleNavigateToCurrentMonth : handleNavigateToPreviousMonth}
-            style={{ marginLeft: Platform.OS === 'ios' ? theme.spacing['level-2'] : theme.spacing['level-4'], padding: theme.spacing['level-1'] }}
+            style={{
+              marginLeft: Platform.OS === 'ios' ? theme.spacing['level-2'] : theme.spacing['level-4'],
+              padding: theme.spacing['level-1'],
+            }}
           >
             <Ionicons
-              name={isViewingPreviousMonth ? "caret-forward" : "caret-back"}
+              name={isViewingPreviousMonth ? 'caret-forward' : 'caret-back'}
               size={26}
               color={theme.colors.textOnPrimary}
             />
@@ -271,169 +88,23 @@ export default function ProductScreen() {
         ),
       });
     } else {
-      navigation.setOptions({
-        title: 'Sản Lượng Estron',
-        headerLeft: () => null,
-      });
+      navigation.setOptions({ title: 'Sản Lượng Estron', headerLeft: () => null });
     }
   }, [navigation, estronWeekInfo, isViewingPreviousMonth, handleNavigateToPreviousMonth, handleNavigateToCurrentMonth]);
 
-  useEffect(() => {
-    if (!userId) {
-      return;
-    }
-
-    const entriesChannel = supabase
-      .channel(`public:entries:user_id=eq.${userId}`)
-      .on(
-        'postgres_changes',
-        {
-          event: '*',
-          schema: 'public',
-          table: 'entries',
-          filter: `user_id=eq.${userId}`,
-        },
-        payload => {
-          console.log('Entries table change received!', payload);
-          loadInitialData(targetDate);
-        }
-      )
-      .subscribe();
-
-    const additionalChannel = supabase
-      .channel(`public:additional:user_id=eq.${userId}`)
-      .on(
-        'postgres_changes',
-        {
-          event: '*',
-          schema: 'public',
-          table: 'additional',
-          filter: `user_id=eq.${userId}`,
-        },
-        payload => {
-          console.log('Additional table change received!', payload);
-          loadInitialData(targetDate);
-        }
-      )
-      .subscribe();
-
-    return () => {
-      supabase.removeChannel(entriesChannel);
-      supabase.removeChannel(additionalChannel);
-    };
-  }, [userId, loadInitialData, targetDate]);
-
-  const handleSelectProduct = async (selectedUserQuota: UserSelectedQuota) => {
-    setIsProductModalVisible(false);
-    if (!userProfile || !userProfile.salary_level) {
-      showAlert('Không tìm thấy thông tin bậc lương người dùng.');
-      return;
-    }
-    if (!selectedUserQuota.product_code) {
-      showAlert('Mã sản phẩm không hợp lệ.');
-      return;
-    }
-    setIsLoading(true);
-    try {
-      const quotaSettingDetails = await getQuotaSettingByProductCode(selectedUserQuota.product_code);
-      if (!quotaSettingDetails) {
-        showAlert(`Không tìm thấy chi tiết định mức cho sản phẩm '${selectedUserQuota.product_code}'.`);
-        setIsLoading(false);
-        return;
-      }
-      const actualQuotaValue = getQuotaValueBySalaryLevel(quotaSettingDetails, userProfile.salary_level);
-      navigation.navigate('InputDetails', {
-        stageCode: selectedUserQuota.product_code,
-        quotaValue: actualQuotaValue,
-        date: selectedDateForInput,
-      });
-    } catch (error) {
-      console.error('ProductScreen: Error in handleSelectProduct:', error);
-      showAlert('Có lỗi xảy ra khi xử lý sản phẩm đã chọn.');
-    } finally {
-      setIsLoading(false);
-    }
+  const handleAddProduction = (date: string) => {
+    navigation.navigate('InputDetails', { date });
   };
-
-  const openProductModal = (dateForInput: string) => {
-    if (userSelectedQuotas.length === 0) {
-      showAlert('Bạn chưa chọn sản phẩm nào trong phần Cài Đặt Định Mức.');
-      return;
-    }
-    setSelectedDateForInput(dateForInput);
-    setIsProductModalVisible(true);
-  };
-  const handleOpenEditModal = (entry: ProductionEntry) => {
+  
+  const handleEditEntry = (entry: ProductionEntry) => {
     if (entry.verified) {
       showAlert('Mục này đã được xác nhận và không thể sửa.');
       return;
     }
-    setEditingEntry(entry);
-    setIsEditModalVisible(true);
-  };
-  const handleCloseEditModal = () => {
-    setIsEditModalVisible(false);
-    setEditingEntry(null);
+    navigation.navigate('InputDetails', { entryId: entry.id });
   };
 
-  const handleUpdateEntry = async (updatedData: Partial<Omit<ProductionEntry, 'id'>>) => {
-    if (!editingEntry) return;
-    if (
-      updatedData.quantity !== undefined &&
-      updatedData.quantity !== null &&
-      (isNaN(updatedData.quantity) || updatedData.quantity < 0)
-    ) {
-      showAlert('Số lượng phải là một số không âm.');
-      return;
-    }
-    setIsSaving(true);
-    const result = await updateProductionEntryById(editingEntry.id, updatedData);
-    setIsSaving(false);
-    if (result) {
-      showAlert('Đã cập nhật thông tin sản phẩm.');
-      handleCloseEditModal();
-      loadInitialData(targetDate);
-    } else {
-      showAlert('Không thể cập nhật. Vui lòng thử lại.');
-    }
-  };
-
-  const handleDeleteEntry = (entry: ProductionEntry) => {
-    if (!entry) return;
-    const message = `Xác nhận xóa\n\nBạn có chắc chắn muốn xóa mục sản phẩm "${entry.product_code}" với số lượng ${entry.quantity ?? 'N/A'} không?`;
-    showAlert(message, [
-      { text: 'Hủy', style: 'secondary', onPress: closeAlert },
-      {
-        text: 'Xóa',
-        style: 'danger',
-        onPress: async () => {
-          closeAlert();
-          setIsSaving(true);
-          const success = await deleteProductionEntry(entry.id);
-          setIsSaving(false);
-          if (success) {
-            showAlert('Mục sản phẩm đã được xóa.');
-            handleCloseEditModal();
-            loadInitialData(targetDate);
-          } else {
-            showAlert('Không thể xóa mục này. Vui lòng thử lại.');
-          }
-        },
-      },
-    ]);
-  };
-
-  if (isLoading && !userId) {
-    return (
-      <View style={styles.centered}>
-        <ActivityIndicator size="large" color={theme.colors.primary} />
-        <Text style={{ color: theme.colors.textSecondary, marginTop: theme.spacing['level-2'] }}>
-          Đang tải thông tin người dùng...
-        </Text>
-      </View>
-    );
-  }
-  if (isLoading && userId && processedWeeksData.length === 0) {
+  if (isLoading && processedDaysData.length === 0) {
     return (
       <View style={styles.centered}>
         <ActivityIndicator size="large" color={theme.colors.primary} />
@@ -443,106 +114,43 @@ export default function ProductScreen() {
       </View>
     );
   }
-  if (!userId && !isLoading) {
+  if (!activeUserId && !isLoading) {
     return (
       <View style={styles.centered}>
         <Text style={styles.emptyText}>Không thể tải dữ liệu do chưa xác thực người dùng.</Text>
-        <Button
-          title="Thử Lại"
-          onPress={() => {
-            const fetchUser = async () => {
-                const { data: { user } } = await supabase.auth.getUser();
-                if(user) setUserId(user.id);
-            };
-            fetchUser();
-          }}
-          style={{ marginTop: theme.spacing['level-4'] }}
-        />
       </View>
     );
   }
-  if (userId && !isLoading && (!estronWeekInfo || processedWeeksData.length === 0)) {
+  if (activeUserId && !isLoading && (!estronWeekInfo || processedDaysData.length === 0)) {
     return (
       <View style={styles.centered}>
-        <Text style={styles.emptyText}>Không có dữ liệu tuần để hiển thị cho tháng này.</Text>
-        <Button title="Thử Tải Lại" onPress={() => loadInitialData(targetDate)} style={{ marginTop: theme.spacing['level-4'] }} />
+        <Text style={styles.emptyText}>Không có dữ liệu ngày để hiển thị cho tháng này.</Text>
+        <Button title="Tải lại" onPress={() => initialize(activeUserId)} style={{ marginTop: theme.spacing['level-4'] }} />
       </View>
     );
   }
-
-  const pagerKey = `${userId}-${processedWeeksData.length}-${currentPage}-${Platform.OS}-${targetDate.toISOString()}`;
 
   return (
     <View style={styles.container}>
-      {userId &&
-        processedWeeksData.length > 0 &&
-        (Platform.OS === 'web' ? (
-          <Swiper
-            style={styles.pagerView}
-            initialSlide={currentPage}
-            onSlideChange={swiper => setCurrentPage(swiper.activeIndex)}
-            key={pagerKey}
-          >
-            {processedWeeksData.map(weekData => (
-              <SwiperSlide
-                key={weekData.weekInfo.name + weekData.weekInfo.startDate.toISOString()}
-                className="scrollable-slide"
-                style={{ height: '100%', overflow: 'auto' }}
-              >
-                <WeeklyPage
-                  userId={userId}
-                  weekData={weekData}
-                  quotasExist={userSelectedQuotas.length > 0}
-                  onAddProduction={openProductModal}
-                  onEditEntry={handleOpenEditModal}
-                />
-              </SwiperSlide>
-            ))}
-          </Swiper>
-        ) : (
-          PagerView && (
-            <Suspense fallback={<ActivityIndicator size="large" color={theme.colors.primary} />}>
-              <PagerView
-                style={styles.pagerView}
-                initialPage={currentPage}
-                key={pagerKey}
-                onPageSelected={e => setCurrentPage(e.nativeEvent.position)}
-              >
-                {processedWeeksData.map((weekData, index) => (
-                  <View key={index} style={styles.fullFlex}>
-                    <ScrollView showsVerticalScrollIndicator={false}>
-                      <WeeklyPage
-                        userId={userId}
-                        weekData={weekData}
-                        quotasExist={userSelectedQuotas.length > 0}
-                        onAddProduction={openProductModal}
-                        onEditEntry={handleOpenEditModal}
-                      />
-                    </ScrollView>
-                  </View>
-                ))}
-              </PagerView>
-            </Suspense>
-          )
-        ))}
-
-      <SelectProductModal
-        visible={isProductModalVisible}
-        onClose={() => setIsProductModalVisible(false)}
-        userSelectedQuotas={userSelectedQuotas}
-        onSelectProduct={handleSelectProduct}
-        selectedDate={selectedDateForInput}
-      />
-
-      <EditEntryModal
-        visible={isEditModalVisible}
-        onClose={handleCloseEditModal}
-        entry={editingEntry}
-        onUpdate={handleUpdateEntry}
-        onDelete={handleDeleteEntry}
-        isSaving={isSaving}
-      />
-
+      {activeUserId && processedDaysData.length > 0 && (
+        <FlatList
+          data={processedDaysData}
+          renderItem={({ item }) => (
+            <DailyCard
+              userId={activeUserId}
+              dailyInfo={item}
+              weekHasData={userSelectedQuotas.length > 0}
+              onAddProduction={handleAddProduction}
+              onEditEntry={handleEditEntry}
+            />
+          )}
+          keyExtractor={(item) => item.date}
+          style={styles.listStyle}
+          contentContainerStyle={styles.listContentContainer}
+          showsVerticalScrollIndicator={false}
+        />
+      )}
+      
       <AlertModal
         visible={isCustomAlertVisible}
         message={customAlertMessage}
@@ -555,18 +163,17 @@ export default function ProductScreen() {
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: theme.colors.background1 },
-  pagerView: { flex: 1, width: '100%' },
-  fullFlex: { flex: 1 },
-  centered: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    padding: theme.spacing['level-6'],
-  },
+  centered: { flex: 1, justifyContent: 'center', alignItems: 'center', padding: theme.spacing['level-6'] },
   emptyText: {
     fontSize: theme.typography.fontSize['level-4'],
     color: theme.colors.textSecondary,
     textAlign: 'center',
     marginBottom: theme.spacing['level-2'],
+  },
+  listStyle: {
+    paddingHorizontal: theme.spacing['level-2'],
+  },
+  listContentContainer: {
+    paddingBottom: theme.spacing['level-8'],
   },
 });

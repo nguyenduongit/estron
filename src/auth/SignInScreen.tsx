@@ -5,8 +5,8 @@ import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { AuthStackParamList } from '../navigation/types';
 import { theme } from '../theme';
-import CustomButton from './components/CustomButton';
-import AuthLayout from './components/AuthLayout';
+import Button from '../components/common/Button';
+import AuthLayout from './AuthLayout';
 import TextInput from '../../src/components/common/TextInput';
 
 type SignInScreenNavigationProp = NativeStackNavigationProp<AuthStackParamList, 'SignIn'>;
@@ -73,13 +73,13 @@ export default function SignInScreen(): React.ReactElement {
         returnKeyType="go" // Hiển thị nút "Go" hoặc "Đăng nhập" trên bàn phím
         onSubmitEditing={handleSignIn} // Khi nhấn Enter, gọi hàm đăng nhập
       />
-      <CustomButton
+      <Button
         title={loading ? 'Đang xử lý...' : 'Đăng nhập'}
         onPress={handleSignIn}
         loading={loading}
         disabled={loading}
         variant="primary"
-        buttonStyle={{ marginTop: theme.spacing['level-6'] }}
+        style={{ marginTop: theme.spacing['level-6'] }}
       />
     </AuthLayout>
   );

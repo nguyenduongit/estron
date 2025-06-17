@@ -1,72 +1,139 @@
-// components/common/Button.tsx
-import React from "react";
-import { TouchableOpacity, Text, StyleSheet, ViewStyle, TextStyle } from "react-native";
-import { theme } from "../../theme";
+// src/components/common/Button.tsx
+import React from 'react';
+import {
+  TouchableOpacity,
+  Text,
+  StyleSheet,
+  ViewStyle,
+  TextStyle,
+  ActivityIndicator,
+  TouchableOpacityProps,
+} from 'react-native';
+import { theme } from '../../theme';
 
-// Props cho Button
-interface ButtonProps {
+// Hợp nhất các props từ cả hai component
+interface ButtonProps extends TouchableOpacityProps {
   title: string;
   onPress: () => void;
-  type?: "primary" | "secondary" | "danger";
+  variant?: 'primary' | 'secondary' | 'danger' | 'outline';
   style?: ViewStyle | ViewStyle[];
   textStyle?: TextStyle | TextStyle[];
-  disabled?: boolean;
+  loading?: boolean;
 }
 
-const Button: React.FC<ButtonProps> = ({ title, onPress, type = "primary", style, textStyle, disabled }) => {
-  const buttonStyles = [
-    styles.button,
-    styles[type], // type sẽ là 'primary', 'secondary', hoặc 'danger'
-    disabled && styles.disabled,
-    style, // Cho phép ghi đè style từ props
-  ];
-  const textStyles = [
-    styles.text,
-    styles[`${type}Text`], // Sẽ là 'primaryText', 'secondaryText', hoặc 'dangerText'
-    textStyle, // Cho phép ghi đè textStyle từ props
-  ];
+const Button: React.FC<ButtonProps> = ({
+  title,
+  onPress,
+  variant = 'primary',
+  style,
+  textStyle,
+  disabled,
+  loading,
+  ...props
+}) => {
+  // Xác định các style dựa trên variant
+  const getButtonStyles = () => {
+    switch (variant) {
+      case 'primary':
+        return styles.primaryButton;
+      case 'secondary':
+        return styles.secondaryButton;
+      case 'danger':
+        return styles.dangerButton;
+      case 'outline':
+        return styles.outlineButton;
+      default:
+        return styles.primaryButton;
+    }
+  };
+
+  const getTextStyles = () => {
+    switch (variant) {
+      case 'primary':
+        return styles.primaryText;
+      case 'secondary':
+        return styles.secondaryText;
+      case 'danger':
+        return styles.dangerText;
+      case 'outline':
+        return styles.outlineText;
+      default:
+        return styles.primaryText;
+    }
+  };
+  
+  // Xác định màu cho ActivityIndicator
+  const spinnerColor = (variant === 'primary' || variant === 'danger') 
+    ? theme.colors.textOnPrimary 
+    : theme.colors.primary;
 
   return (
-    <TouchableOpacity onPress={onPress} style={buttonStyles} disabled={disabled}>
-      <Text style={textStyles}>{title}</Text>
+    <TouchableOpacity
+      style={[
+        styles.buttonBase,
+        getButtonStyles(),
+        (disabled || loading) && styles.disabled,
+        style,
+      ]}
+      onPress={onPress}
+      disabled={disabled || loading}
+      {...props}
+    >
+      {loading ? (
+        <ActivityIndicator color={spinnerColor} />
+      ) : (
+        <Text style={[styles.textBase, getTextStyles(), textStyle]}>
+          {title}
+        </Text>
+      )}
     </TouchableOpacity>
   );
 };
 
 const styles = StyleSheet.create({
-  button: {
-    paddingVertical: theme.spacing['level-2'], // sm -> level-2
-    paddingHorizontal: theme.spacing['level-4'], // md -> level-4
-    borderRadius: theme.borderRadius['level-4'], // md -> level-4
-    alignItems: "center",
-    justifyContent: "center",
+  // Style cơ bản cho tất cả các nút
+  buttonBase: {
+    paddingVertical: theme.spacing['level-2'],
+    paddingHorizontal: theme.spacing['level-4'],
+    borderRadius: theme.borderRadius['level-4'],
+    alignItems: 'center',
+    justifyContent: 'center',
     minHeight: 44,
   },
-  text: {
-    fontSize: theme.typography.fontSize['level-4'], // button.fontSize (16) -> level-4 (16)
-    fontWeight: theme.typography.fontWeight['bold'], // button.fontWeight ('500') -> level-4-bold
+  textBase: {
+    fontSize: theme.typography.fontSize['level-4'],
+    fontWeight: theme.typography.fontWeight['bold'],
   },
-  primary: {
-    backgroundColor: theme.colors.primary, // Giữ nguyên
+  // Styles cho từng variant
+  primaryButton: {
+    backgroundColor: theme.colors.primary,
   },
   primaryText: {
-    color: theme.colors.textOnPrimary, // white -> textOnPrimary
+    color: theme.colors.textOnPrimary,
   },
-  secondary: {
-    backgroundColor: theme.colors.darkGrey, // secondary -> darkGrey (màu phù hợp cho dark theme)
+  secondaryButton: {
+    backgroundColor: theme.colors.darkGrey,
   },
   secondaryText: {
-    color: theme.colors.text, // white -> text (màu text sáng trên nền tối)
+    color: theme.colors.text,
   },
-  danger: {
-    backgroundColor: theme.colors.danger, // Giữ nguyên
+  dangerButton: {
+    backgroundColor: theme.colors.danger,
   },
   dangerText: {
-    color: theme.colors.textOnPrimary, // white -> textOnPrimary (giả định text trắng trên nền danger)
+    color: theme.colors.textOnPrimary,
   },
+  outlineButton: {
+    backgroundColor: theme.colors.transparent,
+    borderWidth: 1,
+    borderColor: theme.colors.primary,
+  },
+  outlineText: {
+    color: theme.colors.primary,
+  },
+  // Style cho trạng thái vô hiệu hóa
   disabled: {
-    backgroundColor: theme.colors.grey, // Giữ nguyên
-    opacity: 0.7,
+    opacity: 0.6,
   },
 });
 

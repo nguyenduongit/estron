@@ -69,7 +69,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     borderWidth: 1,
     borderColor: theme.colors.borderColor,
-    borderRadius: theme.borderRadius['level-2'],
+    borderRadius: theme.borderRadius['level-4'],
     backgroundColor: theme.colors.cardBackground,
     minHeight: 44,
   },

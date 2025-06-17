@@ -12,6 +12,7 @@ import StatisticsScreen from '../screens/StatisticsTab/StatisticsScreen';
 
 import { InputStackNavigatorParamList, BottomTabNavigatorParamList } from './types';
 import { theme } from '../theme';
+import { useAuthStore } from '../stores/authStore';
 
 const InputTabStack = createStackNavigator<InputStackNavigatorParamList>();
 const StatisticsTabStack = createStackNavigator(); 
@@ -36,6 +37,7 @@ function InputStack() {
         options={({ navigation }: { navigation: StackNavigationProp<InputStackNavigatorParamList, 'ProductList'> }) => ({
           title: 'Sản Lượng Estron',
           headerRight: () => (
+            // Only show settings icon on the Input tab
             <TouchableOpacity
               onPress={() => navigation.navigate('Settings')}
               style={{
@@ -62,6 +64,8 @@ function InputStack() {
 }
 
 function StatisticsStack() {
+  const { signOut } = useAuthStore();
+
   return (
     <StatisticsTabStack.Navigator
       screenOptions={commonStackScreenOptions}
@@ -69,7 +73,21 @@ function StatisticsStack() {
       <StatisticsTabStack.Screen
         name="StatisticsRoot" 
         component={StatisticsScreen}
-        options={{ title: 'Thống Kê Chung' }} 
+        options={{ 
+            title: 'Thống Kê Chung',
+            // Replace user switcher with a sign out button
+            headerRight: () => (
+              <TouchableOpacity
+                onPress={signOut}
+                style={{
+                  marginRight: Platform.OS === 'ios' ? theme.spacing['level-2'] : theme.spacing['level-4'],
+                  padding: theme.spacing['level-1'],
+                }}
+              >
+                <Ionicons name="log-out-outline" size={26} color={theme.colors.textOnPrimary} />
+              </TouchableOpacity>
+            ),
+        }} 
       />
     </StatisticsTabStack.Navigator>
   );

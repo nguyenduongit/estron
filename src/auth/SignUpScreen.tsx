@@ -5,8 +5,8 @@ import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { AuthStackParamList } from '../navigation/types';
 import { theme } from '../theme';
-import CustomButton from './components/CustomButton';
-import AuthLayout from './components/AuthLayout';
+import Button from '../components/common/Button';
+import AuthLayout from './AuthLayout';
 import TextInput from '../../src/components/common/TextInput';
 
 type SignUpScreenNavigationProp = NativeStackNavigationProp<AuthStackParamList, 'SignUp'>;
@@ -113,13 +113,13 @@ export default function SignUpScreen() {
         placeholder="Nhập lại mật khẩu"
         secureTextEntry={true}
       />
-      <CustomButton
+      <Button
         title={loading ? 'Đang xử lý...' : 'Đăng ký'}
         onPress={handleSignUp}
         loading={loading}
         disabled={loading}
         variant="primary"
-        buttonStyle={{ marginTop: theme.spacing['level-4'] }}
+        style={{ marginTop: theme.spacing['level-4'] }}
       />
     </AuthLayout>
   );

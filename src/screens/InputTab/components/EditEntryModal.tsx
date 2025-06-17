@@ -106,11 +106,11 @@ const EditEntryModal: React.FC<EditEntryModalProps> = ({
         />
       </View>
       <View style={styles.actions}>
-        <Button title="Hủy" onPress={onClose} type="secondary" style={styles.button} />
+        <Button title="Hủy" onPress={onClose} variant="secondary" style={styles.button} />
         <Button
           title={isSaving ? 'Đang lưu...' : 'Lưu'}
           onPress={handleUpdate}
-          type="primary"
+          variant="primary"
           style={styles.button}
           disabled={isSaving || !!entry.verified}
         />

@@ -13,7 +13,7 @@ export interface ProductionEntry {
   date: string; // Định dạng yyyy-MM-DD
   po?: string | null; // Đổi thành string | null theo schema mới
   quantity?: number | null;
-  quota_percentage?: number; // Mặc định là 100 trên DB
+  quota_percentage?: number | null;  // Mặc định là 100 trên DB
   box?: string | null; // Đổi thành string | null theo schema mới
   batch?: string | null; // Đổi thành string | null theo schema mới
   created_at?: string;
@@ -33,6 +33,7 @@ export interface DailyProductionData {
     box?: string | null;
     batch?: string | null;
     verified?: boolean | null; // <<< THÊM DÒNG NÀY
+    quota_percentage?: number | null;
   }>;
   totalWorkForDay?: number;
   supplementaryData?: DailySupplementaryData | null;

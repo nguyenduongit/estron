@@ -5,10 +5,8 @@ import Ionicons from '@expo/vector-icons/Ionicons';
 import { theme } from '../../../theme';
 import { DailySupplementaryData } from '../../../types/data';
 import { saveDailySupplementaryData } from '../../../services/storage';
-import { getDay, parseISO } from '../../../utils/dateUtils'; // Thêm import cần thiết
+import { getDay, parseISO } from '../../../utils/dateUtils';
 
-// Bỏ các hằng số cũ
-// const LEAVE_OPTIONS = ...
 const OVERTIME_OPTIONS = [1, 2, 3, 4, 8];
 
 interface AdditionalInfoProps {
@@ -29,9 +27,7 @@ const AdditionalInfo: React.FC<AdditionalInfoProps> = ({ userId, date, initialDa
   const [warningMessage, setWarningMessage] = useState<string | null>(null);
   const warningTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
-  // ================== LOGIC MỚI CHO THỨ 7 ==================
   const isSaturday = getDay(parseISO(date)) === 6;
-  // =========================================================
 
   const showWarningMessage = (message: string) => {
     if (warningTimeoutRef.current) {
@@ -88,7 +84,6 @@ const AdditionalInfo: React.FC<AdditionalInfoProps> = ({ userId, date, initialDa
 
     dataToSave.overtimeHours = field === 'overtimeHours'
         ? (value as number | null)
-        // Nếu nghỉ cả ngày thì reset tăng ca và họp
         : (options?.resetOvertimeAndMeeting ? null : (currentOvertimeHours === undefined ? null : currentOvertimeHours));
 
     const meetingVal = field === 'meetingMinutes'
@@ -100,15 +95,15 @@ const AdditionalInfo: React.FC<AdditionalInfoProps> = ({ userId, date, initialDa
     if (dataToSave.leaveHours === undefined) dataToSave.leaveHours = null;
     if (dataToSave.overtimeHours === undefined) dataToSave.overtimeHours = null;
 
-    try {
-      const savedData = await saveDailySupplementaryData(userId, dataToSave);
-      if (savedData) {
-        onDataChange(savedData);
-      }
-    } catch (error: any) {
+    const { data: savedData, error } = await saveDailySupplementaryData(userId, dataToSave);
+
+    if (error) {
       console.error(`Error saving ${field} for ${date}:`, error);
       Alert.alert("Lỗi", `Không thể lưu dữ liệu ${field}. ${error.message || ''}`);
+    } else if (savedData) {
+      onDataChange(savedData);
     }
+
   }, [date, userId, currentLeaveHours, currentOvertimeHours, currentMeetingMinutes, onDataChange, initialData]);
 
   const handleHourOptionPress = (type: 'leaveHours' | 'overtimeHours', hours: number) => {
@@ -128,7 +123,6 @@ const AdditionalInfo: React.FC<AdditionalInfoProps> = ({ userId, date, initialDa
       setCurrentLeaveHours(newValue);
       newIsFullDayLeave = newValue === 8;
       
-      // Nếu là ngày thường và chọn nghỉ cả ngày (8h), hoặc là thứ 7 và chọn nghỉ (4h) thì reset các mục khác
       const isConsideredFullDayLeave = (!isSaturday && newValue === 8) || (isSaturday && newValue === 4);
 
       if (isConsideredFullDayLeave) {
@@ -139,7 +133,6 @@ const AdditionalInfo: React.FC<AdditionalInfoProps> = ({ userId, date, initialDa
         handleSaveSupplementaryData('leaveHours', newValue);
       }
       if (onFullDayLeaveChange) {
-        // isFullDayLeave vẫn dựa trên 8h để vô hiệu hóa các nút nhập sản lượng
         onFullDayLeaveChange(newValue === 8);
       }
     } else if (type === 'overtimeHours') {
@@ -177,12 +170,9 @@ const AdditionalInfo: React.FC<AdditionalInfoProps> = ({ userId, date, initialDa
       {warningMessage && (
         <Text style={styles.warningText}>{warningMessage}</Text>
       )}
-
-      {/* ================== THAY ĐỔI MỤC NGHỈ ================== */}
       <View style={styles.additionalRow}>
         <Text style={[styles.additionalLabel, isLeaveDisabled && styles.disabledText]}>Nghỉ:</Text>
         <View style={styles.optionsContainer}>
-            {/* Nút Nữa ngày */}
             <TouchableOpacity
                 key={`leave-half`}
                 style={[
@@ -204,8 +194,6 @@ const AdditionalInfo: React.FC<AdditionalInfoProps> = ({ userId, date, initialDa
                   Nữa ngày
                 </Text>
             </TouchableOpacity>
-
-            {/* Nút Cả ngày */}
             <TouchableOpacity
                 key={`leave-full`}
                 style={[
@@ -229,8 +217,6 @@ const AdditionalInfo: React.FC<AdditionalInfoProps> = ({ userId, date, initialDa
             </TouchableOpacity>
         </View>
       </View>
-
-      {/* Mục Tăng ca */}
       <View style={styles.additionalRow}>
         <Text style={[styles.additionalLabel, isOvertimeDisabled && styles.disabledText]}>Tăng ca:</Text>
         <View style={styles.optionsContainer}>
@@ -258,8 +244,6 @@ const AdditionalInfo: React.FC<AdditionalInfoProps> = ({ userId, date, initialDa
           ))}
         </View>
       </View>
-
-      {/* Mục Họp/Đào tạo */}
       <TouchableOpacity
         activeOpacity={1}
         onPress={() => {
@@ -290,7 +274,6 @@ const AdditionalInfo: React.FC<AdditionalInfoProps> = ({ userId, date, initialDa
   );
 };
 
-// Giữ nguyên styles, chỉ thay đổi 1 chút
 const styles = StyleSheet.create({
   additionalSection: {
     paddingHorizontal: theme.spacing['level-4'],
@@ -336,7 +319,6 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     borderWidth: 1,
     paddingHorizontal: theme.spacing['level-1'],
-    // marginHorizontal: 2,
   },
   leaveOptionButton: {
       flex: 1, 

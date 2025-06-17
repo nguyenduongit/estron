@@ -205,12 +205,13 @@ const DailyCard: React.FC<DailyCardProps> = ({
 const styles = StyleSheet.create({
     dailyCard: {
         marginVertical: theme.spacing['level-2'],
-        padding: 0,
         borderRadius: theme.borderRadius['level-4'],
-        overflow: 'hidden',
         borderWidth: 1,
         borderColor: theme.colors.borderColor,
-        backgroundColor: theme.colors.background2,
+        // *** THAY ĐỔI NẰM Ở ĐÂY ***
+        backgroundColor: theme.colors.cardBackground, // Sử dụng màu nền cho card
+        ...theme.shadow.lg, // Thêm bóng đổ vừa phải từ theme
+        // Đã xóa 'overflow: hidden' để bóng đổ có thể hiển thị
     },
     cardHeader: {
         height: 40,
@@ -223,6 +224,9 @@ const styles = StyleSheet.create({
         borderBottomWidth: 1,
         borderBottomColor: theme.colors.borderColor,
         backgroundColor: theme.colors.background4,
+        // Bo tròn góc trên để khớp với card
+        borderTopLeftRadius: theme.borderRadius['level-4'],
+        borderTopRightRadius: theme.borderRadius['level-4'],
     },
     headerRightContainer: {
         flex: 1,
@@ -236,7 +240,6 @@ const styles = StyleSheet.create({
         alignItems: 'center',
         justifyContent: 'flex-end',
         marginRight: theme.spacing['level-3'],
-        
     },
     headerIcon: {
         marginLeft: theme.spacing['level-2'],
@@ -251,11 +254,10 @@ const styles = StyleSheet.create({
         flexDirection: 'row',
         alignItems: 'center',
         justifyContent: 'flex-end',
-        
     },
     cardTotalWorkLabel: {
         fontSize: theme.typography.fontSize['level-3'],
-        fontStyle: theme.typography.fontStyle['italic'],
+        fontStyle: 'italic',
         color: theme.colors.text,
         textAlign: 'right',
         paddingRight: theme.spacing['level-1'],
@@ -266,7 +268,9 @@ const styles = StyleSheet.create({
         color: '#f13060',
         textAlign: 'right',
     },
-    entriesContainer: {},
+    entriesContainer: {
+        // Đảm bảo các góc dưới được bo tròn nếu đây là phần tử cuối cùng trước footer
+    },
     noEntryText: {
         fontSize: theme.typography.fontSize['level-3'],
         color: theme.colors.textSecondary,

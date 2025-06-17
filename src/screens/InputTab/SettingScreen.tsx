@@ -9,7 +9,6 @@ import Ionicons from '@expo/vector-icons/Ionicons';
 import { InputStackNavigatorParamList } from '../../navigation/types';
 import { theme } from '../../theme';
 import { UserSelectedQuota, QuotaSetting } from '../../types/data';
-import { supabase } from '../../services/supabase';
 import {
   getQuotaSettingByProductCode,
   getUserSelectedQuotas,
@@ -22,6 +21,7 @@ import {
 import Button from '../../components/common/Button';
 import TextInput from '../../components/common/TextInput';
 import ModalWrapper from '../../components/common/ModalWrapper';
+import { useAuthStore } from '../../stores/authStore';
 
 if (Platform.OS === 'web') {
   const styleId = 'hide-settings-scrollbar-style';
@@ -70,73 +70,70 @@ export default function SettingScreen() {
   const [isDeleteConfirmModalVisible, setIsDeleteConfirmModalVisible] = useState(false);
   const [quotaToDelete, setQuotaToDelete] = useState<UserSelectedQuota | null>(null);
 
-  const [userId, setUserId] = useState<string | null>(null);
+  const activeUserId = useAuthStore(state => state.authUser?.profile.id);
   const [expandedProductCode, setExpandedProductCode] = useState<string | null>(null);
   const [quotaDetailsMap, setQuotaDetailsMap] = useState<Map<string, QuotaSetting>>(new Map());
 
   const searchTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
-  useEffect(() => {
-    const fetchUser = async () => {
-      try {
-        const {
-          data: { user },
-        } = await supabase.auth.getUser();
-        if (user) setUserId(user.id);
-      } catch (error) {
-        console.error('[SettingScreen] Exception khi lấy thông tin người dùng:', error);
-      }
-    };
-    fetchUser();
-  }, []);
-
   const loadUserQuotas = useCallback(async () => {
-    if (!userId) return;
+    if (!activeUserId) return;
     setIsLoading(true);
     try {
-      const storedQuotas = await getUserSelectedQuotas(userId);
-      setUserSelectedQuotas(storedQuotas);
+      const { data: storedQuotas, error: quotasError } = await getUserSelectedQuotas(activeUserId);
+      if (quotasError) throw quotasError;
+      
+      setUserSelectedQuotas(storedQuotas || []);
 
-      if (storedQuotas.length > 0) {
+      if (storedQuotas && storedQuotas.length > 0) {
         const productCodes = storedQuotas.map(q => q.product_code);
-        const details = await getQuotaSettingsByProductCodes(productCodes);
+        const { data: details, error: detailsError } = await getQuotaSettingsByProductCodes(productCodes);
+        if (detailsError) throw detailsError;
+
         const detailsMap = new Map<string, QuotaSetting>();
-        details.forEach((detail: QuotaSetting) => {
-          detailsMap.set(detail.product_code, detail);
-        });
+        if (details) {
+            details.forEach((detail: QuotaSetting) => {
+                detailsMap.set(detail.product_code, detail);
+            });
+        }
         setQuotaDetailsMap(detailsMap);
       } else {
         setQuotaDetailsMap(new Map());
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error('[SettingScreen] loadUserQuotas error:', error);
-      Alert.alert('Lỗi', 'Không thể tải danh sách định mức đã chọn.');
+      Alert.alert('Lỗi', `Không thể tải danh sách định mức: ${error.message}`);
     } finally {
       setIsLoading(false);
     }
-  }, [userId]);
+  }, [activeUserId]);
 
   useEffect(() => {
-    if (isFocused && userId) {
+    if (isFocused && activeUserId) {
       loadUserQuotas();
     }
-  }, [isFocused, userId, loadUserQuotas]);
+  }, [isFocused, activeUserId, loadUserQuotas]);
 
   const handleSaveOrder = useCallback(async () => {
-    if (!userId) {
+    if (!activeUserId) {
       Alert.alert('Lỗi', 'Không thể xác định người dùng.');
       return;
     }
     setIsLoading(true);
-    const success = await saveUserSelectedQuotasOrder(
-      userId,
+    const { data: success, error } = await saveUserSelectedQuotasOrder(
+      activeUserId,
       userSelectedQuotas.map((q, index) => ({ product_code: q.product_code, zindex: index }))
     );
-    if (success) Alert.alert('Đã lưu', 'Thứ tự định mức đã được cập nhật.');
-    else Alert.alert('Lỗi', 'Không thể lưu thứ tự định mức. Vui lòng thử lại.');
+    
+    if (error) {
+        Alert.alert('Lỗi', `Không thể lưu thứ tự: ${error.message}`);
+    } else if (success) {
+        Alert.alert('Đã lưu', 'Thứ tự định mức đã được cập nhật.');
+    }
+    
     setIsEditMode(false);
     setIsLoading(false);
-  }, [userId, userSelectedQuotas]);
+  }, [activeUserId, userSelectedQuotas]);
 
   useLayoutEffect(() => {
     navigation.setOptions({
@@ -186,7 +183,9 @@ export default function SettingScreen() {
     setIsSearchingProduct(true);
     searchTimeoutRef.current = setTimeout(async () => {
       try {
-        const productDetails = await getQuotaSettingByProductCode(upperCaseText.trim());
+        const { data: productDetails, error } = await getQuotaSettingByProductCode(upperCaseText.trim());
+        if (error) throw error;
+        
         if (productDetails) {
           setFoundProduct(productDetails);
           setProductSearchMessage(null);
@@ -194,9 +193,9 @@ export default function SettingScreen() {
           setFoundProduct(null);
           setProductSearchMessage(`Mã sản phẩm '${upperCaseText.trim()}' không tồn tại.`);
         }
-      } catch (error) {
+      } catch (error: any) {
         setFoundProduct(null);
-        setProductSearchMessage('Lỗi khi tra cứu mã sản phẩm.');
+        setProductSearchMessage(`Lỗi khi tra cứu: ${error.message}`);
       } finally {
         setIsSearchingProduct(false);
       }
@@ -204,7 +203,7 @@ export default function SettingScreen() {
   };
 
   const handleAddProduct = async () => {
-    if (!userId || !foundProduct) return;
+    if (!activeUserId || !foundProduct) return;
     if (userSelectedQuotas.some(q => q.product_code === foundProduct.product_code)) {
       Alert.alert('Thông báo', `Sản phẩm '${foundProduct.product_code}' đã có trong danh sách.`);
       return;
@@ -213,21 +212,22 @@ export default function SettingScreen() {
     Keyboard.dismiss();
     try {
       const newOrder = userSelectedQuotas.length;
-      const addedQuota = await addUserSelectedQuota(
-        userId,
+      const { data: addedQuota, error } = await addUserSelectedQuota(
+        activeUserId,
         foundProduct.product_code,
         foundProduct.product_name,
         newOrder
       );
+
+      if (error) throw error;
+
       if (addedQuota) {
         await loadUserQuotas();
         handleCloseAddModal();
         Alert.alert('Thành công', `Đã thêm sản phẩm '${addedQuota.product_name}'.`);
-      } else {
-        Alert.alert('Lỗi', `Không thể thêm sản phẩm.`);
       }
-    } catch (error) {
-      Alert.alert('Lỗi', 'Đã có lỗi xảy ra khi thêm sản phẩm.');
+    } catch (error: any) {
+      Alert.alert('Lỗi', `Đã có lỗi xảy ra: ${error.message}`);
     } finally {
       setIsLoading(false);
     }
@@ -245,25 +245,28 @@ export default function SettingScreen() {
   };
 
   const handleConfirmDelete = async () => {
-    if (!quotaToDelete || !userId) return;
+    if (!quotaToDelete || !activeUserId) return;
     const { product_code, product_name } = quotaToDelete;
     setIsLoading(true);
     setIsDeleteConfirmModalVisible(false);
-    const success = await deleteUserSelectedQuota(userId, product_code);
-    if (success) {
+    
+    const { data: success, error } = await deleteUserSelectedQuota(activeUserId, product_code);
+
+    if (error) {
+      Alert.alert('Lỗi', `Không thể xóa: ${error.message}`);
+    } else if (success) {
       Alert.alert('Đã xóa', `'${product_name || product_code}' đã được xóa.`);
       const remaining = userSelectedQuotas.filter(q => q.product_code !== product_code);
       const updated = remaining.map((q, index) => ({ ...q, zindex: index }));
       setUserSelectedQuotas(updated);
       if (updated.length > 0) {
         await saveUserSelectedQuotasOrder(
-          userId,
+          activeUserId,
           updated.map(q => ({ product_code: q.product_code, zindex: q.zindex }))
         );
       }
-    } else {
-      Alert.alert('Lỗi', 'Không thể xóa định mức. Vui lòng thử lại.');
     }
+    
     setQuotaToDelete(null);
     setIsLoading(false);
   };
@@ -314,7 +317,7 @@ export default function SettingScreen() {
           {isExpanded && details && (
             <View style={styles.detailsContainer}>
               {SALARY_LEVELS.map((level, index) => {
-                const quotaValue = details[level.key] as number | null | undefined;
+                const quotaValue = details[level.key as keyof QuotaSetting] as number | null | undefined;
                 const isLastRow = index === SALARY_LEVELS.length - 1;
                 return (
                   <View key={level.key} style={[styles.quotaRow, isLastRow && styles.quotaRowLast]}>
@@ -391,7 +394,7 @@ export default function SettingScreen() {
               <Text style={styles.foundProductName}>{foundProduct.product_name}</Text>
               <View>
                 {SALARY_LEVELS.map(level => {
-                  const quotaValue = foundProduct[level.key] as number | null | undefined;
+                  const quotaValue = foundProduct[level.key as keyof QuotaSetting] as number | null | undefined;
                   return (
                     <View key={level.key} style={styles.modalQuotaRow}>
                       <Text style={styles.quotaLabel}>{level.label}:</Text>
@@ -411,7 +414,7 @@ export default function SettingScreen() {
             <Button
               title={isLoading ? 'Đang thêm...' : 'Thêm vào danh sách'}
               onPress={handleAddProduct}
-              type="primary"
+              variant="primary"
               style={styles.modalButton}
               disabled={isLoading || !foundProduct || isSearchingProduct}
             />
@@ -431,11 +434,11 @@ export default function SettingScreen() {
               <Text style={styles.detailText}>Tên SP: {quotaToDelete.product_name || '(Chưa có tên)'}</Text>
             </View>
             <View style={styles.modalActions}>
-              <Button title="Hủy" onPress={handleCancelDelete} type="secondary" style={styles.modalButton} />
+              <Button title="Hủy" onPress={handleCancelDelete} variant="secondary" style={styles.modalButton} />
               <Button
                 title={isLoading ? 'Đang xóa...' : 'Xóa'}
                 onPress={handleConfirmDelete}
-                type="danger"
+                variant="danger"
                 style={styles.modalButton}
                 disabled={isLoading}
               />
@@ -543,8 +546,10 @@ const styles = StyleSheet.create({
     paddingRight: theme.spacing['level-3'],
   },
   addButton: {
-    marginHorizontal: theme.spacing['level-6'],
-    marginVertical: theme.spacing['level-4'],
+    position: 'absolute',
+    bottom: theme.spacing['level-4'],
+    left: theme.spacing['level-6'],
+    right: theme.spacing['level-6'],
   },
   modalInnerContent: {
     paddingHorizontal: theme.spacing['level-1'],
@@ -554,6 +559,7 @@ const styles = StyleSheet.create({
     justifyContent: 'space-around',
     marginTop: theme.spacing['level-6'],
     marginBottom: theme.spacing['level-2'],
+    gap: theme.spacing['level-2'],
   },
   modalButton: {
     flex: 1,
