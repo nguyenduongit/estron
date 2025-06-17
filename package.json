@@ -54,7 +54,8 @@
     "swiper": "^11.2.8",
     "util": "^0.12.5",
     "expo-web-browser": "~14.1.6",
-    "undefined": "expo-auth-session/providers/google"
+    "undefined": "expo-auth-session/providers/google",
+    "expo-checkbox": "~4.1.4"
   },
   "devDependencies": {
     "@babel/core": "^7.25.2",

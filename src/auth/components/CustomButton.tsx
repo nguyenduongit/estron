@@ -1,13 +1,22 @@
-// src/auth/components/CustomButton.tsx
 import React from 'react';
-import { TouchableOpacity, Text, StyleSheet, ActivityIndicator, ViewStyle, TextStyle, TouchableOpacityProps } from 'react-native';
+import { 
+  TouchableOpacity, 
+  Text, 
+  StyleSheet, 
+  ActivityIndicator, 
+  ViewStyle, 
+  TextStyle, 
+  TouchableOpacityProps,
+  StyleProp // <<< THÊM IMPORT NÀY
+} from 'react-native';
 import { theme } from '../../theme';
 
 interface CustomButtonProps extends TouchableOpacityProps {
   title: string;
   loading?: boolean;
-  buttonStyle?: ViewStyle;
-  textStyle?: TextStyle;
+  // THAY ĐỔI 2 DÒNG DƯỚI ĐÂY
+  buttonStyle?: StyleProp<ViewStyle>; 
+  textStyle?: StyleProp<TextStyle>;
   variant?: 'primary' | 'outline';
 }
 
@@ -29,7 +38,7 @@ const CustomButton: React.FC<CustomButtonProps> = ({
         styles.buttonBase,
         isPrimary ? styles.primaryButton : styles.outlineButton,
         disabled || loading ? styles.disabled : {},
-        buttonStyle,
+        buttonStyle, // Dòng này vẫn giữ nguyên
       ]}
       onPress={onPress}
       disabled={disabled || loading}
@@ -41,7 +50,7 @@ const CustomButton: React.FC<CustomButtonProps> = ({
         <Text style={[
           styles.textBase,
           isPrimary ? styles.primaryText : styles.outlineText,
-          textStyle
+          textStyle // Dòng này vẫn giữ nguyên
         ]}>
           {title}
         </Text>
@@ -69,7 +78,9 @@ const styles = StyleSheet.create({
     borderColor: theme.colors.primary, // Giữ nguyên
   },
   textBase: {
-    ...theme.typography['level-3-bold'], // bodySmall + bold -> level-3-bold (fontSize 14, bold)
+    fontSize: theme.typography.fontSize['level-4'], // Giữ nguyên
+    fontWeight: theme.typography.fontWeight.bold, // Giữ nguyên
+    textAlign: 'center',
   },
   primaryText: {
     color: theme.colors.textOnPrimary, // white -> textOnPrimary

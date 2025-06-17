@@ -639,3 +639,44 @@ export const getStatisticsRPC = async (userId: string, date: Date): Promise<any 
         return null;
     }
 };
+
+export const getAllUserProfiles = async (): Promise<Profile[]> => {
+    try {
+        const { data, error } = await supabase
+            .from('profiles')
+            .select('id, username, full_name, email, is_active, role, created_at')
+            .neq('role', 'admin') // Chỉ lấy các profile không phải là 'admin'
+            .order('created_at', { ascending: false });
+
+        if (error) {
+            console.error('[Supabase] Lỗi khi lấy danh sách profile người dùng:', error);
+            return [];
+        }
+        return data || [];
+    } catch (e) {
+        console.error('[Supabase] Exception khi lấy danh sách profile:', e);
+        return [];
+    }
+};
+
+export const updateUsersStatus = async (userIds: string[], isActive: boolean): Promise<boolean> => {
+    if (!userIds || userIds.length === 0) return true;
+
+    try {
+        const { error } = await supabase
+            .from('profiles')
+            .update({ is_active: isActive })
+            .in('id', userIds);
+
+        if (error) {
+            console.error('[Supabase] Lỗi khi cập nhật trạng thái người dùng:', error);
+            Alert.alert('Lỗi', 'Không thể cập nhật trạng thái người dùng. Vui lòng thử lại.');
+            return false;
+        }
+        return true;
+    } catch (e) {
+        console.error('[Supabase] Exception khi cập nhật trạng thái người dùng:', e);
+        Alert.alert('Lỗi hệ thống', 'Đã có lỗi không mong muốn xảy ra.');
+        return false;
+    }
+}

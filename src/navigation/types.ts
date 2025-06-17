@@ -7,6 +7,10 @@
       // Thêm các màn hình khác của Auth stack nếu có
     };
 
+    export type AdminStackParamList = {
+  AdminDashboard: undefined;
+};
+
     // Định nghĩa các params cho từng màn hình trong Stack Nhập liệu
     export type InputStackNavigatorParamList = {
       ProductList: undefined; // Màn hình Product (đổi tên từ ProductScreen để rõ ràng hơn)
