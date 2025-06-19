@@ -1,16 +1,18 @@
 // src/screens/InputTab/InputScreen.tsx
 import React, { useState, useLayoutEffect, useEffect, useMemo } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, ActivityIndicator, Platform, ScrollView } from 'react-native';
+import { View, Text, StyleSheet, ActivityIndicator, ScrollView } from 'react-native';
 import type { RouteProp } from '@react-navigation/native';
 import type { StackNavigationProp } from '@react-navigation/stack';
-import DateTimePicker, { DateTimePickerEvent } from '@react-native-community/datetimepicker';
-import Ionicons from '@expo/vector-icons/Ionicons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { parseISO } from 'date-fns';
 
 import { InputStackNavigatorParamList } from '../../navigation/types';
 import { theme } from '../../theme';
-import { addProductionBoxEntry, updateProductionEntryById, deleteProductionEntry } from '../../services/storage';
+import {
+  addProductionBoxEntry,
+  updateProductionEntryById,
+  deleteProductionEntry,
+} from '../../services/storage';
 import { ProductionEntry } from '../../types/data';
 import { formatToYYYYMMDD, formatDate } from '../../utils/dateUtils';
 import Button from '../../components/common/Button';
@@ -46,8 +48,13 @@ export default function InputScreen({ route, navigation }: Props) {
   const { date: initialDateString, entryId } = route.params;
   const isEditMode = !!entryId;
 
+  // <<< START: THAY ĐỔI TẠI ĐÂY >>>
+  // Lấy từng phần của state một cách riêng rẽ để tránh vòng lặp render
   const userSelectedQuotas = useProductionStore(state => state.userSelectedQuotas);
-  const processedDaysData = useProductionStore(state => state.processedDaysData); // Sửa lỗi: Sử dụng processedDaysData
+  const processedDaysData = useProductionStore(state => state.processedDaysData);
+  const quotaSettingsMap = useProductionStore(state => state.quotaSettingsMap);
+  // <<< END: THAY ĐỔI TẠI ĐÂY >>>
+
   const activeUserId = useAuthStore(state => state.authUser?.profile.id);
 
   const [isInitializing, setIsInitializing] = useState(true);
@@ -61,7 +68,7 @@ export default function InputScreen({ route, navigation }: Props) {
       }
     }
     return null;
-  }, [isEditMode, entryId, processedDaysData]); // Sửa lỗi: Thêm processedDaysData vào dependency
+  }, [isEditMode, entryId, processedDaysData]);
 
   const [selectedDate, setSelectedDate] = useState<Date>(new Date());
   const [selectedProductCode, setSelectedProductCode] = useState<string>('');
@@ -72,7 +79,6 @@ export default function InputScreen({ route, navigation }: Props) {
   const [batch, setBatch] = useState<string>('');
 
   const [isLoading, setIsLoading] = useState(false);
-  const [showDatePicker, setShowDatePicker] = useState(false);
   const [formError, setFormError] = useState<string | null>(null);
 
   const [isAlertVisible, setIsAlertVisible] = useState(false);
@@ -94,9 +100,10 @@ export default function InputScreen({ route, navigation }: Props) {
       }
 
       if (isEditMode) {
-        // Chờ cho initialEntry được tính toán
         if (initialEntry) {
-          const productExists = userSelectedQuotas.some(q => q.product_code === initialEntry.product_code);
+          const productExists = userSelectedQuotas.some(
+            q => q.product_code === initialEntry.product_code
+          );
           if (productExists) {
             setSelectedProductCode(initialEntry.product_code);
           } else {
@@ -105,25 +112,25 @@ export default function InputScreen({ route, navigation }: Props) {
           }
 
           setSelectedDate(parseISO(initialEntry.date));
-
           const savedPercentage = initialEntry.quota_percentage;
           setQuotaPercentage(savedPercentage ? Number(savedPercentage) : 100);
 
-          setQuantity(initialEntry.quantity?.toString() ?? '');
+          // Nếu không có số lượng đã lưu, đặt mặc định là 270. Nếu có, hiển thị số đã lưu.
+          setQuantity(initialEntry.quantity?.toString() ?? '270');
           setPo(initialEntry.po ?? '');
           setBox(initialEntry.box ?? '');
           setBatch(initialEntry.batch ?? '');
 
           setIsInitializing(false);
         }
-        // Nếu initialEntry chưa có, isInitializing vẫn là true, màn hình loading sẽ hiển thị
       } else {
         setSelectedDate(initialDateString ? parseISO(initialDateString) : new Date());
         setQuotaPercentage(100);
-        setQuantity('');
+        setQuantity('270');
         setPo('');
         setBox('');
         setBatch('');
+
         const lastUsedCode = await AsyncStorage.getItem(LAST_PRODUCT_KEY);
         if (lastUsedCode && userSelectedQuotas.some(q => q.product_code === lastUsedCode)) {
           setSelectedProductCode(lastUsedCode);
@@ -136,27 +143,33 @@ export default function InputScreen({ route, navigation }: Props) {
       }
     };
 
-    // Chỉ chạy khi initialEntry đã sẵn sàng (ở chế độ sửa) hoặc không ở chế độ sửa
     if (!isEditMode || initialEntry) {
       initializeForm();
     }
   }, [isEditMode, initialEntry, userSelectedQuotas, initialDateString, navigation, activeUserId]);
 
   useLayoutEffect(() => {
-    navigation.setOptions({
-      title: isEditMode ? 'Sửa thông tin sản phẩm' : 'Thêm sản phẩm mới',
-    });
-  }, [navigation, isEditMode]);
+    const formattedDate = formatDate(selectedDate, 'dd/MM/yyyy');
+    const title = isEditMode
+      ? `Sửa mục ngày ${formattedDate}`
+      : `Nhập liệu cho ngày ${formattedDate}`;
+
+    navigation.setOptions({ title });
+  }, [navigation, isEditMode, selectedDate]);
 
   const productPickerItems = useMemo(() => {
     if (userSelectedQuotas.length === 0) {
-      return [{ label: 'Vui lòng thêm SP ở Cài đặt', value: '' }];
+      return [{ label: 'Thêm công đoạn chuyên môn ở Cài đặt', value: '' }];
     }
-    return userSelectedQuotas.map(quota => ({
-      label: `${quota.product_code} - ${quota.product_name}`,
-      value: quota.product_code,
-    }));
-  }, [userSelectedQuotas]);
+    return userSelectedQuotas.map(quota => {
+      const setting = quotaSettingsMap.get(quota.product_code);
+      const productName = setting ? setting.product_name : '(Không tìm thấy tên)';
+      return {
+        label: `${quota.product_code} - ${productName}`,
+        value: quota.product_code,
+      };
+    });
+  }, [userSelectedQuotas, quotaSettingsMap]);
 
   const validateInput = (): boolean => {
     if (!selectedProductCode) {
@@ -230,14 +243,6 @@ export default function InputScreen({ route, navigation }: Props) {
     ]);
   };
 
-  const onChangeDate = (event: DateTimePickerEvent, newSelectedDate?: Date) => {
-    setShowDatePicker(Platform.OS === 'ios');
-    if (newSelectedDate) {
-      setShowDatePicker(false);
-      setSelectedDate(newSelectedDate);
-    }
-  };
-
   if (isInitializing) {
     return (
       <View style={styles.centered}>
@@ -254,38 +259,12 @@ export default function InputScreen({ route, navigation }: Props) {
       contentContainerStyle={{ paddingBottom: 60 }}
     >
       <ThemedPicker
-        label="Mã sản phẩm"
+        label="Mã công đoạn"
         selectedValue={selectedProductCode}
         onValueChange={itemValue => setSelectedProductCode(itemValue as string)}
         items={productPickerItems}
         enabled={!isEditMode && userSelectedQuotas.length > 0}
       />
-
-      <TouchableOpacity
-        onPress={() => !isEditMode && setShowDatePicker(true)}
-        style={styles.datePickerButton}
-        disabled={isEditMode}
-      >
-        <Ionicons
-          name="calendar-outline"
-          size={20}
-          color={isEditMode ? theme.colors.grey : theme.colors.primary}
-          style={styles.icon}
-        />
-        <Text style={[styles.datePickerText, isEditMode && styles.disabledText]}>
-          Ngày nhập: {formatDate(selectedDate, 'dd/MM/yyyy')}
-        </Text>
-      </TouchableOpacity>
-
-      {showDatePicker && !isEditMode && (
-        <DateTimePicker
-          value={selectedDate}
-          mode="date"
-          display="default"
-          onChange={onChangeDate}
-          maximumDate={new Date()}
-        />
-      )}
 
       <TextInput
         label="Số lượng"
@@ -293,10 +272,43 @@ export default function InputScreen({ route, navigation }: Props) {
         onChangeText={setQuantity}
         placeholder="Nhập số lượng"
         keyboardType="numeric"
+        returnKeyType="next"
+        onFocus={() => {
+          if (quantity === '270') {
+            setQuantity('');
+          }
+        }}
+        onBlur={() => {
+          if (quantity.trim() === '') {
+            setQuantity('270');
+          }
+        }}
       />
-      <TextInput label="PO" value={po} onChangeText={setPo} placeholder="Nhập số PO" />
-      <TextInput label="Hộp" value={box} onChangeText={setBox} placeholder="Nhập mã hộp" />
-      <TextInput label="Batch" value={batch} onChangeText={setBatch} placeholder="Nhập số batch" />
+      <TextInput
+        label="PO"
+        value={po}
+        onChangeText={setPo}
+        keyboardType="numeric"
+        returnKeyType="next"
+        placeholder="Nhập số PO"
+      />
+      <TextInput
+        label="Hộp"
+        value={box}
+        onChangeText={setBox}
+        keyboardType="numeric"
+        returnKeyType="next"
+        placeholder="Nhập mã hộp"
+      />
+      <TextInput
+        label="Batch"
+        value={batch}
+        onChangeText={setBatch}
+        keyboardType="numeric"
+        placeholder="Nhập số batch"
+        returnKeyType="done"
+        onSubmitEditing={handleSave}
+      />
 
       <ThemedPicker
         label="Phần trăm định mức"
@@ -310,8 +322,15 @@ export default function InputScreen({ route, navigation }: Props) {
         <ActivityIndicator size="large" color={theme.colors.primary} style={styles.loader} />
       ) : (
         <View style={styles.buttonContainer}>
-          {isEditMode && <Button title="Xóa" onPress={handleDelete} variant="danger" style={styles.button} />}
-          <Button title="Hủy" onPress={() => navigation.goBack()} variant="secondary" style={styles.button} />
+          {isEditMode && (
+            <Button title="Xóa" onPress={handleDelete} variant="danger" style={styles.button} />
+          )}
+          <Button
+            title="Hủy"
+            onPress={() => navigation.goBack()}
+            variant="secondary"
+            style={styles.button}
+          />
           <Button title="Lưu" onPress={handleSave} variant="primary" style={styles.button} />
         </View>
       )}
@@ -327,24 +346,18 @@ export default function InputScreen({ route, navigation }: Props) {
 }
 
 const styles = StyleSheet.create({
-  centered: { flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: theme.colors.background2 },
-  loadingText: { color: theme.colors.textSecondary, marginTop: theme.spacing['level-2'] },
-  container: { flex: 1, padding: theme.spacing['level-6'], backgroundColor: theme.colors.background2 },
-  datePickerButton: {
-    flexDirection: 'row',
+  centered: {
+    flex: 1,
+    justifyContent: 'center',
     alignItems: 'center',
-    backgroundColor: theme.colors.cardBackground,
-    paddingVertical: theme.spacing['level-4'],
-    paddingHorizontal: theme.spacing['level-2'],
-    borderRadius: theme.borderRadius['level-4'],
-    borderWidth: 1,
-    borderColor: theme.colors.borderColor,
-    marginBottom: theme.spacing['level-4'],
-    minHeight: 46,
+    backgroundColor: theme.colors.background2,
   },
-  datePickerText: { fontSize: theme.typography.fontSize['level-4'], color: theme.colors.text },
-  disabledText: { color: theme.colors.grey },
-  icon: { marginRight: theme.spacing['level-2'] },
+  loadingText: { color: theme.colors.textSecondary, marginTop: theme.spacing['level-2'] },
+  container: {
+    flex: 1,
+    padding: theme.spacing['level-6'],
+    backgroundColor: theme.colors.background2,
+  },
   errorText: {
     fontSize: theme.typography.fontSize['level-2'],
     color: theme.colors.danger,

@@ -26,6 +26,9 @@ const palette = {
   grey: '#8E8E93', // iOS System Gray
   lightGrey: '#C7C7CC', // iOS System Gray 3 (Adjusted from D3D3D3 for better fit)
   darkGrey: '#3A3A3C', // iOS System Gray 6 (For dark theme subtle elements)
+  sunday: '#FD475D',
+  saturday:'#EC594D',
+  workDay:'#339BFF',
 
   // Other
   borderColor: '#384553', // Border color for elements on dark backgrounds
@@ -56,6 +59,9 @@ export const theme = {
     grey: palette.grey,
     lightGrey: palette.lightGrey,
     darkGrey: palette.darkGrey,
+    sunday:palette.sunday,
+    saturday:palette.saturday,
+    workDay:palette.workDay,
 
     borderColor: palette.borderColor,
     cardBackground: palette.cardBackground,

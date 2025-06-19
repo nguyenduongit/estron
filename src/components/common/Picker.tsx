@@ -1,13 +1,13 @@
 // src/components/common/Picker.tsx
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
 import {
   View,
   Text,
   StyleSheet,
   TouchableOpacity,
   FlatList,
-  Modal, // Sử dụng Modal gốc từ React Native
-  TouchableWithoutFeedback, // Dùng để xử lý sự kiện nhấn ra ngoài
+  Modal,
+  TouchableWithoutFeedback,
 } from 'react-native';
 import { theme } from '../../theme';
 import Ionicons from '@expo/vector-icons/Ionicons';
@@ -26,6 +26,8 @@ interface PickerProps {
   colorLabel?: string;
 }
 
+const ITEM_HEIGHT = 48; // Chiều cao cố định cho mỗi mục trong danh sách
+
 const ThemedPicker: React.FC<PickerProps> = ({
   label,
   selectedValue,
@@ -34,26 +36,38 @@ const ThemedPicker: React.FC<PickerProps> = ({
   enabled = true,
   colorLabel,
 }) => {
-  const [modalVisible, setModalVisible] = useState(false);
+  const [isListVisible, setListVisible] = useState(false);
+  const [layout, setLayout] = useState<{ x: number; y: number; width: number; height: number } | null>(null);
+  
+  const pickerRef = useRef<React.ElementRef<typeof TouchableOpacity>>(null);
+
+  const toggleList = () => {
+    if (isListVisible) {
+      setListVisible(false);
+    } else {
+      pickerRef.current?.measureInWindow((x: number, y: number, width: number, height: number) => {
+        setLayout({ x, y, width, height });
+        setListVisible(true);
+      });
+    }
+  };
 
   const selectedItem = items.find(item => item.value === selectedValue);
 
-  // Cập nhật hàm renderItem
   const renderItem = ({ item, index }: { item: PickerItemProps; index: number }) => {
-    // Tách chuỗi label thành product_code và product_name
     const parts = item.label.split(' - ');
     const productCode = parts[0];
     const productName = parts.length > 1 ? parts.slice(1).join(' - ') : '';
+    const isLastItem = index === items.length - 1;
 
     return (
       <TouchableOpacity
-        style={styles.modalItem}
+        style={[styles.modalItem, isLastItem && { borderBottomWidth: 0 }]}
         onPress={() => {
           onValueChange(item.value, index);
-          setModalVisible(false);
+          setListVisible(false);
         }}
       >
-        {/* Lồng Text để style riêng và giới hạn 1 dòng */}
         <Text numberOfLines={1} ellipsizeMode="tail">
           <Text style={styles.productCodeText}>{productCode}</Text>
           {productName ? <Text style={styles.productNameText}>{` - ${productName}`}</Text> : null}
@@ -77,8 +91,14 @@ const ThemedPicker: React.FC<PickerProps> = ({
       )}
 
       <TouchableOpacity
-        style={[styles.pickerWrapper, !enabled && styles.disabledContainer]}
-        onPress={() => enabled && setModalVisible(true)}
+        ref={pickerRef}
+        style={[
+            styles.pickerWrapper, 
+            !enabled && styles.disabledContainer,
+            // Áp dụng style khi danh sách được mở
+            isListVisible && styles.pickerWrapperOpen
+        ]}
+        onPress={() => enabled && toggleList()}
         disabled={!enabled}
       >
         <Text 
@@ -89,7 +109,7 @@ const ThemedPicker: React.FC<PickerProps> = ({
           {selectedItem ? selectedItem.label : 'Vui lòng chọn...'}
         </Text>
         <Ionicons
-          name="chevron-down"
+          name={isListVisible ? "chevron-up" : "chevron-down"}
           size={20}
           color={enabled ? theme.colors.textSecondary : theme.colors.grey}
         />
@@ -97,23 +117,36 @@ const ThemedPicker: React.FC<PickerProps> = ({
       
       <Modal
         transparent={true}
-        visible={modalVisible}
-        onRequestClose={() => setModalVisible(false)}
+        visible={isListVisible}
+        onRequestClose={() => setListVisible(false)}
         animationType="fade"
       >
-        <TouchableWithoutFeedback onPress={() => setModalVisible(false)}>
+        <TouchableWithoutFeedback onPress={() => setListVisible(false)}>
           <View style={styles.modalOverlay}>
-            <TouchableWithoutFeedback>
-              <View style={styles.modalContainer}>
-                <FlatList
+            {layout && (
+              <TouchableWithoutFeedback>
+                <View style={[
+                  styles.dropdownContainer, 
+                  {
+                    top: layout.y + layout.height, // Nối liền với ô picker
+                    left: layout.x,
+                    width: layout.width,
+                    maxHeight: ITEM_HEIGHT * 3.5,
+                  }
+                ]}>
+                  <FlatList
                     data={items}
                     renderItem={renderItem}
                     keyExtractor={item => item.value.toString()}
-                    style={styles.flatList}
                     showsVerticalScrollIndicator={false}
-                />
-              </View>
-            </TouchableWithoutFeedback>
+                    style={styles.flatList}
+                    getItemLayout={(data, index) => (
+                      { length: ITEM_HEIGHT, offset: ITEM_HEIGHT * index, index }
+                    )}
+                  />
+                </View>
+              </TouchableWithoutFeedback>
+            )}
           </View>
         </TouchableWithoutFeedback>
       </Modal>
@@ -141,6 +174,12 @@ const styles = StyleSheet.create({
     minHeight: 46,
     paddingHorizontal: theme.spacing['level-3'],
   },
+  // Style cho picker khi mở
+  pickerWrapperOpen: {
+    borderBottomWidth: 0,
+    borderBottomLeftRadius: 0,
+    borderBottomRightRadius: 0,
+  },
   pickerText: {
     flex: 1,
     color: theme.colors.text,
@@ -148,7 +187,7 @@ const styles = StyleSheet.create({
     marginRight: theme.spacing['level-2'],
   },
   placeholderText: {
-      color: theme.colors.grey,
+    color: theme.colors.grey,
   },
   disabledContainer: {
     backgroundColor: theme.colors.darkGrey,
@@ -160,36 +199,33 @@ const styles = StyleSheet.create({
   },
   modalOverlay: {
     flex: 1,
-    backgroundColor: 'rgba(0, 0, 0, 0.6)',
-    justifyContent: 'center',
-    alignItems: 'center',
-    padding: theme.spacing['level-4'],
   },
-  modalContainer: {
-    width: '100%',
-    maxWidth: 420,
-    maxHeight: '30%',
+  dropdownContainer: {
+    position: 'absolute',
     backgroundColor: theme.colors.cardBackground,
-    borderRadius: theme.borderRadius['level-6'],
-    paddingVertical: theme.spacing['level-2'], // Điều chỉnh padding
-    paddingHorizontal: theme.spacing['level-5'],
+    borderWidth: 1,
+    borderColor: theme.colors.borderColor, // Sửa màu viền
+    borderTopWidth: 0, // Bỏ viền trên
+    borderBottomLeftRadius: theme.borderRadius['level-4'],
+    borderBottomRightRadius: theme.borderRadius['level-4'],
     ...theme.shadow.lg,
+    overflow: 'hidden',
   },
   flatList: {
-    // style này có thể để trống
+    // Không cần style cụ thể
   },
   modalItem: {
-    paddingVertical: theme.spacing['level-4'], // Tăng padding cho dễ nhấn
+    height: ITEM_HEIGHT,
+    justifyContent: 'center',
+    paddingHorizontal: theme.spacing['level-3'],
     borderBottomWidth: 1,
     borderBottomColor: theme.colors.borderColor,
   },
-  // Style mới cho mã sản phẩm
   productCodeText: {
     color: theme.colors.primary,
     fontWeight: 'bold',
     fontSize: theme.typography.fontSize['level-3'],
   },
-  // Style mới cho tên sản phẩm
   productNameText: {
     color: theme.colors.text,
     fontSize: theme.typography.fontSize['level-3'],

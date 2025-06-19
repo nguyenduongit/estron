@@ -93,7 +93,15 @@ export const useProductionStore = create<ProductState & ProductActions>((set, ge
         const supplementaryDataForMonth = supplementaryRes.data || [];
         const supplementaryDataMap = new Map<string, DailySupplementaryData>();
         supplementaryDataForMonth.forEach(data => { if (data.date) supplementaryDataMap.set(data.date, data); });
-        const allQuotaSettingsNeededCodes = selectedQuotasData.map(usq => usq.product_code);
+        
+        // <<< START: SỬA LỖI TẠI ĐÂY >>>
+        // Lấy mã công đoạn từ cả sản lượng đã nhập và từ cài đặt của người dùng
+        const codesFromEntries = productionEntriesFromSupabase.map(entry => entry.product_code);
+        const codesFromSettings = selectedQuotasData.map(usq => usq.product_code);
+        // Kết hợp và loại bỏ các mã trùng lặp để lấy tất cả định mức cần thiết
+        const allQuotaSettingsNeededCodes = [...new Set([...codesFromEntries, ...codesFromSettings])];
+        // <<< END: SỬA LỖI TẠI ĐÂY >>>
+
         const newQuotaSettingsMap = new Map<string, QuotaSetting>();
         if (allQuotaSettingsNeededCodes.length > 0) {
             const { data: settingsResults, error: settingsError } = await getQuotaSettingsByProductCodes(allQuotaSettingsNeededCodes);
@@ -118,6 +126,7 @@ export const useProductionStore = create<ProductState & ProductActions>((set, ge
                     const dailyQuota = getQuotaValueBySalaryLevel(quotaSetting, profileData.salary_level);
                     if (dailyQuota > 0) {
                         const percentage = entry.quota_percentage ?? 100;
+                        // Công thức đúng: (Số lượng / Định mức) / (Tỷ lệ % / 100)
                         workAmount = (entry.quantity / dailyQuota) / (percentage / 100);
                     }
                 }
@@ -181,7 +190,10 @@ export const useProductionStore = create<ProductState & ProductActions>((set, ge
             const dailyQuota = getQuotaValueBySalaryLevel(quotaSetting, userProfile.salary_level);
             if (dailyQuota > 0) {
                 const percentage = newEntry.quota_percentage ?? 100;
-                workAmount = (newEntry.quantity / dailyQuota) * (percentage / 100);
+                // <<< START: SỬA LỖI TÍNH TOÁN SAI >>>
+                // Sửa từ phép nhân thành phép chia để đồng bộ với `loadInitialData`
+                workAmount = (newEntry.quantity / dailyQuota) / (percentage / 100);
+                // <<< END: SỬA LỖI TÍNH TOÁN SAI >>>
             }
           }
           targetDay.entries.push({ id: newEntry.id, stageCode: newEntry.product_code, quantity: newEntry.quantity || 0, workAmount: parseFloat(workAmount.toFixed(2)), po: newEntry.po, box: newEntry.box, batch: newEntry.batch, verified: newEntry.verified, quota_percentage: newEntry.quota_percentage });

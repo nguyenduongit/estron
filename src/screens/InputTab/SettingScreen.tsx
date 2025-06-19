@@ -6,7 +6,7 @@ import { useNavigation, useIsFocused } from '@react-navigation/native';
 import DraggableFlatList, { RenderItemParams, ScaleDecorator } from 'react-native-draggable-flatlist';
 import Ionicons from '@expo/vector-icons/Ionicons';
 
-import { InputStackNavigatorParamList } from '../../navigation/types';
+import { MenuStackNavigatorParamList } from '../../navigation/types';
 import { theme } from '../../theme';
 import { UserSelectedQuota, QuotaSetting } from '../../types/data';
 import {
@@ -41,7 +41,7 @@ if (Platform.OS === 'web') {
   }
 }
 
-type SettingScreenNavigationProp = StackNavigationProp<InputStackNavigatorParamList, 'Settings'>;
+type SettingScreenNavigationProp = StackNavigationProp<MenuStackNavigatorParamList, 'Setting'>;
 
 const SALARY_LEVELS = [
   { key: 'level_0_9', label: 'Bậc 0.9' },
@@ -215,7 +215,6 @@ export default function SettingScreen() {
       const { data: addedQuota, error } = await addUserSelectedQuota(
         activeUserId,
         foundProduct.product_code,
-        foundProduct.product_name,
         newOrder
       );
 
@@ -224,7 +223,7 @@ export default function SettingScreen() {
       if (addedQuota) {
         await loadUserQuotas();
         handleCloseAddModal();
-        Alert.alert('Thành công', `Đã thêm sản phẩm '${addedQuota.product_name}'.`);
+        Alert.alert('Thành công', `Đã thêm sản phẩm '${foundProduct.product_name}'.`);
       }
     } catch (error: any) {
       Alert.alert('Lỗi', `Đã có lỗi xảy ra: ${error.message}`);
@@ -246,7 +245,9 @@ export default function SettingScreen() {
 
   const handleConfirmDelete = async () => {
     if (!quotaToDelete || !activeUserId) return;
-    const { product_code, product_name } = quotaToDelete;
+    const { product_code } = quotaToDelete;
+    const productName = quotaDetailsMap.get(product_code)?.product_name;
+
     setIsLoading(true);
     setIsDeleteConfirmModalVisible(false);
     
@@ -255,7 +256,7 @@ export default function SettingScreen() {
     if (error) {
       Alert.alert('Lỗi', `Không thể xóa: ${error.message}`);
     } else if (success) {
-      Alert.alert('Đã xóa', `'${product_name || product_code}' đã được xóa.`);
+      Alert.alert('Đã xóa', `'${productName || product_code}' đã được xóa.`);
       const remaining = userSelectedQuotas.filter(q => q.product_code !== product_code);
       const updated = remaining.map((q, index) => ({ ...q, zindex: index }));
       setUserSelectedQuotas(updated);
@@ -274,6 +275,7 @@ export default function SettingScreen() {
   const renderQuotaItem = ({ item, drag, isActive }: RenderItemParams<UserSelectedQuota>): React.ReactNode => {
     const isExpanded = expandedProductCode === item.product_code;
     const details = quotaDetailsMap.get(item.product_code);
+    const productName = details?.product_name || '(Chưa có tên)';
 
     const handlePress = () => {
       if (isEditMode) return;
@@ -301,7 +303,7 @@ export default function SettingScreen() {
 
             <View style={styles.infoContainer}>
               <Text style={styles.itemProductName} numberOfLines={2}>
-                {item.product_name || '(Chưa có tên)'}
+                {productName}
               </Text>
             </View>
 
@@ -345,8 +347,8 @@ export default function SettingScreen() {
     <View style={styles.container}>
       {userSelectedQuotas.length === 0 && !isLoading ? (
         <View style={styles.centered}>
-          <Text style={styles.emptyText}>Chưa có sản phẩm nào được thêm.</Text>
-          <Text style={styles.emptyText}>Nhấn "Thêm Sản Phẩm Mới" để bắt đầu.</Text>
+          <Text style={styles.emptyText}>Chưa có công đoạn nào được thêm.</Text>
+          <Text style={styles.emptyText}>Nhấn "Thêm Công Đoạn Mới" để bắt đầu.</Text>
         </View>
       ) : (
         <DraggableFlatList
@@ -365,15 +367,15 @@ export default function SettingScreen() {
         />
       )}
 
-      {!isEditMode && <Button title="Thêm Sản Phẩm Mới" onPress={handleOpenAddModal} style={styles.addButton} />}
+      {!isEditMode && <Button title="Thêm Công Đoạn Mới" onPress={handleOpenAddModal} style={styles.addButton} />}
 
       <ModalWrapper visible={isAddModalVisible} onClose={handleCloseAddModal}>
         <View style={styles.customModalHeaderContainer}>
-          <Text style={styles.customModalHeaderText}>Thêm Sản Phẩm</Text>
+          <Text style={styles.customModalHeaderText}>Thêm Công Đoạn</Text>
         </View>
         <View style={styles.modalInnerContent}>
           <TextInput
-            label="Mã Sản Phẩm"
+            label="Mã Công Đoạn"
             value={currentProductCodeInput}
             onChangeText={handleProductCodeChange}
             placeholder="Ví dụ: 5.2"
@@ -392,17 +394,6 @@ export default function SettingScreen() {
           {foundProduct && !isSearchingProduct && (
             <View style={styles.modalProductDetails}>
               <Text style={styles.foundProductName}>{foundProduct.product_name}</Text>
-              <View>
-                {SALARY_LEVELS.map(level => {
-                  const quotaValue = foundProduct[level.key as keyof QuotaSetting] as number | null | undefined;
-                  return (
-                    <View key={level.key} style={styles.modalQuotaRow}>
-                      <Text style={styles.quotaLabel}>{level.label}:</Text>
-                      <Text style={styles.quotaValue}>{quotaValue ?? 'N/A'}</Text>
-                    </View>
-                  );
-                })}
-              </View>
             </View>
           )}
 
@@ -431,7 +422,7 @@ export default function SettingScreen() {
             </Text>
             <View style={styles.confirmDeleteDetails}>
               <Text style={styles.detailTextBold}>Mã SP: {quotaToDelete.product_code}</Text>
-              <Text style={styles.detailText}>Tên SP: {quotaToDelete.product_name || '(Chưa có tên)'}</Text>
+              <Text style={styles.detailText}>Tên SP: {quotaDetailsMap.get(quotaToDelete.product_code)?.product_name || '(Chưa có tên)'}</Text>
             </View>
             <View style={styles.modalActions}>
               <Button title="Hủy" onPress={handleCancelDelete} variant="secondary" style={styles.modalButton} />
@@ -577,25 +568,21 @@ const styles = StyleSheet.create({
     color: theme.colors.text,
   },
   modalProductDetails: {
-    marginTop: theme.spacing['level-4'],
     paddingTop: theme.spacing['level-4'],
-    backgroundColor: theme.colors.background1,
-    borderRadius: theme.borderRadius['level-4'],
+    paddingBottom: theme.spacing['level-2'], // Thêm padding bottom để không bị dính nút
   },
   foundProductName: {
-    fontSize: theme.typography.fontSize['level-4'],
-    fontWeight: 'bold',
-    color: theme.colors.primary,
+    fontSize: theme.typography.fontSize['level-3'],
+    color: theme.colors.success,
     textAlign: 'center',
-    marginBottom: theme.spacing['level-4'],
   },
+  // Style này không còn được dùng trong modal nữa, nhưng giữ lại vì nó được dùng ở chỗ khác
   modalQuotaRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems:'center',
     borderTopWidth: 0.5,
     borderTopColor: theme.colors.borderColor,
-    
   },
   errorTextModal: {
     fontSize: theme.typography.fontSize['level-3'],

@@ -1,5 +1,5 @@
 // src/screens/InputTab/ProductScreen.tsx
-import React, { useState, useCallback, useLayoutEffect } from 'react';
+import React, { useState, useCallback, useLayoutEffect, useMemo } from 'react'; // <<< Thêm useMemo
 import { View, Text, StyleSheet, ActivityIndicator, Platform, TouchableOpacity, FlatList } from 'react-native';
 import type { StackNavigationProp } from '@react-navigation/stack';
 import { useNavigation, useFocusEffect } from '@react-navigation/native';
@@ -15,6 +15,7 @@ import Button from '../../components/common/Button';
 import AlertModal, { AlertButtonType } from '../../components/common/AlertModal';
 import { useProductionStore } from '../../stores/productionStore';
 import { useAuthStore } from '../../stores/authStore';
+import { useSettingsStore } from '../../stores/settingsStore'; // <<< Thêm import
 
 type ProductScreenNavigationProp = StackNavigationProp<InputStackNavigatorParamList, 'ProductList'>;
 
@@ -33,6 +34,7 @@ export default function ProductScreen() {
   } = useProductionStore();
   
   const activeUserId = useAuthStore(state => state.authUser?.profile.id);
+  const showSunday = useSettingsStore(state => state.showSunday); // <<< Lấy trạng thái từ store
 
   const [isCustomAlertVisible, setIsCustomAlertVisible] = useState(false);
   const [customAlertMessage, setCustomAlertMessage] = useState('');
@@ -44,6 +46,15 @@ export default function ProductScreen() {
     setIsCustomAlertVisible(true);
   };
   const closeAlert = () => setIsCustomAlertVisible(false);
+
+  // <<< START: Lọc dữ liệu hiển thị bằng useMemo >>>
+  const filteredDaysData = useMemo(() => {
+    if (showSunday) {
+      return processedDaysData;
+    }
+    return processedDaysData.filter(day => day.dayOfWeek !== 'Chủ Nhật');
+  }, [processedDaysData, showSunday]);
+  // <<< END: Lọc dữ liệu hiển thị bằng useMemo >>>
 
   useFocusEffect(
     useCallback(() => {
@@ -73,22 +84,33 @@ export default function ProductScreen() {
         title: `Sản lượng tháng ${estronWeekInfo.estronMonth.estronMonth}`,
         headerLeft: () => (
           <TouchableOpacity
-            onPress={isViewingPreviousMonth ? handleNavigateToCurrentMonth : handleNavigateToPreviousMonth}
-            style={{
-              marginLeft: Platform.OS === 'ios' ? theme.spacing['level-2'] : theme.spacing['level-4'],
-              padding: theme.spacing['level-1'],
-            }}
+            onPress={handleNavigateToPreviousMonth}
+            disabled={isViewingPreviousMonth}
+            style={{ marginLeft: Platform.OS === 'ios' ? theme.spacing['level-2'] : theme.spacing['level-4'], padding: theme.spacing['level-1'] }}
           >
             <Ionicons
-              name={isViewingPreviousMonth ? 'caret-forward' : 'caret-back'}
+              name={'caret-back'}
               size={26}
-              color={theme.colors.textOnPrimary}
+              color={isViewingPreviousMonth ? theme.colors.grey : theme.colors.textOnPrimary}
             />
           </TouchableOpacity>
         ),
+        headerRight: () => (
+            <TouchableOpacity
+              onPress={handleNavigateToCurrentMonth}
+              disabled={!isViewingPreviousMonth}
+              style={{ marginRight: Platform.OS === 'ios' ? theme.spacing['level-2'] : theme.spacing['level-4'], padding: theme.spacing['level-1'] }}
+            >
+              <Ionicons
+                name={'caret-forward'}
+                size={26}
+                color={!isViewingPreviousMonth ? theme.colors.grey : theme.colors.textOnPrimary}
+              />
+            </TouchableOpacity>
+        ),
       });
     } else {
-      navigation.setOptions({ title: 'Sản Lượng Estron', headerLeft: () => null });
+      navigation.setOptions({ title: 'Sản Lượng Estron', headerLeft: () => null, headerRight: () => null });
     }
   }, [navigation, estronWeekInfo, isViewingPreviousMonth, handleNavigateToPreviousMonth, handleNavigateToCurrentMonth]);
 
@@ -121,7 +143,7 @@ export default function ProductScreen() {
       </View>
     );
   }
-  if (activeUserId && !isLoading && (!estronWeekInfo || processedDaysData.length === 0)) {
+  if (activeUserId && !isLoading && (!estronWeekInfo || filteredDaysData.length === 0)) { // <<< Sửa đổi điều kiện
     return (
       <View style={styles.centered}>
         <Text style={styles.emptyText}>Không có dữ liệu ngày để hiển thị cho tháng này.</Text>
@@ -132,9 +154,9 @@ export default function ProductScreen() {
 
   return (
     <View style={styles.container}>
-      {activeUserId && processedDaysData.length > 0 && (
+      {activeUserId && filteredDaysData.length > 0 && ( // <<< Sửa đổi điều kiện
         <FlatList
-          data={processedDaysData}
+          data={filteredDaysData} // <<< Sử dụng dữ liệu đã lọc
           renderItem={({ item }) => (
             <DailyCard
               userId={activeUserId}

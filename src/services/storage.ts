@@ -85,11 +85,10 @@ export const getUserSelectedQuotas = async (
 export const addUserSelectedQuota = async (
     userId: string,
     productCode: string,
-    productName: string,
     zindex: number
 ): Promise<{ data: UserSelectedQuota | null; error: Error | null }> => {
-    if (!userId || !productCode || !productName) {
-        return { data: null, error: createError('Thiếu thông tin userId, productCode, hoặc productName.') };
+    if (!userId || !productCode) {
+        return { data: null, error: createError('Thiếu thông tin userId hoặc productCode.') };
     }
     try {
         const { data: existing, error: existingError } = await supabase
@@ -103,7 +102,7 @@ export const addUserSelectedQuota = async (
 
         const { data, error: supaError } = await supabase
             .from('user_selected_quotas')
-            .insert([{ user_id: userId, product_code: productCode, product_name: productName, zindex: zindex }])
+            .insert([{ user_id: userId, product_code: productCode, zindex: zindex }])
             .select()
             .single();
         if (supaError) throw createError('Lỗi khi thêm định mức đã chọn.', supaError);

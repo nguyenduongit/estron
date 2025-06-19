@@ -7,12 +7,11 @@ import { TouchableOpacity, Platform } from 'react-native';
 
 import ProductScreen from '../screens/InputTab/ProductScreen';
 import InputScreen from '../screens/InputTab/InputScreen';
-import SettingScreen from '../screens/InputTab/SettingScreen';
 import StatisticsScreen from '../screens/StatisticsTab/StatisticsScreen';
+import MenuNavigator from '../screens/MenuTab/MenuNavigator';
 
 import { InputStackNavigatorParamList, BottomTabNavigatorParamList } from './types';
 import { theme } from '../theme';
-import { useAuthStore } from '../stores/authStore';
 
 const InputTabStack = createStackNavigator<InputStackNavigatorParamList>();
 const StatisticsTabStack = createStackNavigator(); 
@@ -34,38 +33,19 @@ function InputStack() {
       <InputTabStack.Screen
         name="ProductList"
         component={ProductScreen}
-        options={({ navigation }: { navigation: StackNavigationProp<InputStackNavigatorParamList, 'ProductList'> }) => ({
+        options={{
           title: 'Sản Lượng Estron',
-          headerRight: () => (
-            // Only show settings icon on the Input tab
-            <TouchableOpacity
-              onPress={() => navigation.navigate('Settings')}
-              style={{
-                marginRight: Platform.OS === 'ios' ? theme.spacing['level-2'] : theme.spacing['level-4'], 
-                padding: theme.spacing['level-1'], 
-              }}
-            >
-              <Ionicons name="settings-outline" size={24} color={theme.colors.textOnPrimary} /> 
-            </TouchableOpacity>
-          ),
-        })}
+        }}
       />
       <InputTabStack.Screen
         name="InputDetails"
         component={InputScreen}
-      />
-      <InputTabStack.Screen
-        name="Settings"
-        component={SettingScreen}
-        options={{ title: 'Danh Sách Sản Phẩm' }}
       />
     </InputTabStack.Navigator>
   );
 }
 
 function StatisticsStack() {
-  const { signOut } = useAuthStore();
-
   return (
     <StatisticsTabStack.Navigator
       screenOptions={commonStackScreenOptions}
@@ -74,19 +54,7 @@ function StatisticsStack() {
         name="StatisticsRoot" 
         component={StatisticsScreen}
         options={{ 
-            title: 'Thống Kê Chung',
-            // Replace user switcher with a sign out button
-            headerRight: () => (
-              <TouchableOpacity
-                onPress={signOut}
-                style={{
-                  marginRight: Platform.OS === 'ios' ? theme.spacing['level-2'] : theme.spacing['level-4'],
-                  padding: theme.spacing['level-1'],
-                }}
-              >
-                <Ionicons name="log-out-outline" size={26} color={theme.colors.textOnPrimary} />
-              </TouchableOpacity>
-            ),
+            title: 'Thống Kê Chung', // Tiêu đề này sẽ được ghi đè bởi màn hình
         }} 
       />
     </StatisticsTabStack.Navigator>
@@ -104,6 +72,8 @@ export default function AppNavigator() {
             iconName = focused ? 'create' : 'create-outline';
           } else if (route.name === 'StatisticsTab') {
             iconName = focused ? 'stats-chart' : 'stats-chart-outline';
+          } else if (route.name === 'MenuTab') {
+            iconName = focused ? 'menu' : 'menu-outline';
           }
           return <Ionicons name={iconName} size={size} color={color} />;
         },
@@ -125,6 +95,11 @@ export default function AppNavigator() {
         name="StatisticsTab"
         component={StatisticsStack}
         options={{ title: 'Thống kê' }}
+      />
+      <Tab.Screen
+        name="MenuTab"
+        component={MenuNavigator}
+        options={{ title: 'Menu' }}
       />
     </Tab.Navigator>
   );

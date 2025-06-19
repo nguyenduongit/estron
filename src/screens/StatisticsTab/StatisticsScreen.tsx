@@ -7,12 +7,12 @@ import {
   ActivityIndicator,
   ScrollView,
   Platform,
-  Alert,
+  TouchableOpacity,
 } from 'react-native';
-import { useNavigation, useFocusEffect } from '@react-navigation/native';
+import { useNavigation } from '@react-navigation/native';
 import type { BottomTabNavigationProp } from '@react-navigation/bottom-tabs';
 import Ionicons from '@expo/vector-icons/Ionicons';
-import { isBefore } from 'date-fns';
+import { isBefore, addDays } from 'date-fns';
 
 import { BottomTabNavigatorParamList } from '../../navigation/types';
 import { theme } from '../../theme';
@@ -31,7 +31,6 @@ import {
   getSupplementaryDataByDateRange,
 } from '../../services/storage';
 import Button from '../../components/common/Button';
-import { Profile } from '../../types/data';
 import { useAuthStore } from '../../stores/authStore';
 
 if (Platform.OS === 'web') {
@@ -52,7 +51,10 @@ if (Platform.OS === 'web') {
   }
 }
 
-type StatisticsScreenNavigationProp = BottomTabNavigationProp<BottomTabNavigatorParamList, 'StatisticsTab'>;
+type StatisticsScreenNavigationProp = BottomTabNavigationProp<
+  BottomTabNavigatorParamList,
+  'StatisticsTab'
+>;
 
 interface WeeklyProductStat {
   product_code: string;
@@ -73,9 +75,11 @@ export default function StatisticsScreen() {
 
   const [isLoading, setIsLoading] = useState(true);
   const activeUserId = useAuthStore(state => state.authUser?.profile.id);
-  const [userProfile, setUserProfile] = useState<Profile | null>(null);
   const [currentEstronMonth, setCurrentEstronMonth] = useState<EstronMonthPeriod | null>(null);
   const [errorLoading, setErrorLoading] = useState<string | null>(null);
+
+  const [targetDate, setTargetDate] = useState(() => getToday());
+  const [isViewingPreviousMonth, setIsViewingPreviousMonth] = useState(false);
 
   const [standardWorkdaysForMonth, setStandardWorkdaysForMonth] = useState<number>(0);
   const [standardWorkdaysToCurrent, setStandardWorkdaysToCurrent] = useState<number>(0);
@@ -87,30 +91,81 @@ export default function StatisticsScreen() {
   const [weeklyStatistics, setWeeklyStatistics] = useState<WeeklyStatistics[]>([]);
   const [missingDataDays, setMissingDataDays] = useState<Date[]>([]);
 
+  const handleNavigateToPreviousMonth = useCallback(() => {
+    if (currentEstronMonth) {
+      const previousMonthDate = addDays(currentEstronMonth.startDate, -1);
+      setTargetDate(previousMonthDate);
+      setIsViewingPreviousMonth(true);
+    }
+  }, [currentEstronMonth]);
+
+  const handleNavigateToCurrentMonth = useCallback(() => {
+    setTargetDate(getToday());
+    setIsViewingPreviousMonth(false);
+  }, []);
+
   useLayoutEffect(() => {
     navigation.setOptions({
-      title: userProfile
-        ? `${userProfile.full_name || ''} - ${(userProfile.username || '').toUpperCase()}`
-        : 'Thống Kê Chung',
+      title: currentEstronMonth
+        ? `Thống kê sản lượng tháng ${currentEstronMonth.estronMonth}`
+        : 'Thống Kê Sản Lượng',
+      headerLeft: () => (
+        <TouchableOpacity
+          onPress={handleNavigateToPreviousMonth}
+          disabled={isViewingPreviousMonth}
+          style={{
+            marginLeft: Platform.OS === 'ios' ? theme.spacing['level-2'] : theme.spacing['level-4'],
+            padding: theme.spacing['level-1'],
+          }}
+        >
+          <Ionicons
+            name={'caret-back'}
+            size={26}
+            color={isViewingPreviousMonth ? theme.colors.grey : theme.colors.textOnPrimary}
+          />
+        </TouchableOpacity>
+      ),
+      headerRight: () => (
+        <TouchableOpacity
+          onPress={handleNavigateToCurrentMonth}
+          disabled={!isViewingPreviousMonth}
+          style={{
+            marginRight:
+              Platform.OS === 'ios' ? theme.spacing['level-2'] : theme.spacing['level-4'],
+            padding: theme.spacing['level-1'],
+          }}
+        >
+          <Ionicons
+            name={'caret-forward'}
+            size={26}
+            color={!isViewingPreviousMonth ? theme.colors.grey : theme.colors.textOnPrimary}
+          />
+        </TouchableOpacity>
+      ),
     });
-  }, [navigation, userProfile]);
+  }, [
+    navigation,
+    currentEstronMonth,
+    isViewingPreviousMonth,
+    handleNavigateToPreviousMonth,
+    handleNavigateToCurrentMonth,
+  ]);
 
-  const loadStatisticsData = useCallback(async () => {
-    if (!activeUserId) {
-      return;
-    }
-    setIsLoading(true);
-    setErrorLoading(null);
-    setMissingDataDays([]);
+  const loadStatisticsData = useCallback(
+    async (dateForStats: Date) => {
+      if (!activeUserId) {
+        return;
+      }
+      setIsLoading(true);
+      setErrorLoading(null);
+      setMissingDataDays([]);
 
-    const today = getToday();
-    const { data: stats, error } = await getStatisticsRPC(activeUserId, today);
+      const { data: stats, error } = await getStatisticsRPC(activeUserId, dateForStats);
 
-    if (error) {
+      if (error) {
         console.error('Error loading statistics data via RPC:', error);
         setErrorLoading('Đã có lỗi xảy ra: ' + error.message);
-    } else if (stats) {
-        setUserProfile(stats.userProfile);
+      } else if (stats) {
         setCurrentEstronMonth(stats.monthInfo);
         setStandardWorkdaysForMonth(stats.standardWorkdaysForMonth);
         setStandardWorkdaysToCurrent(stats.standardWorkdaysToCurrent);
@@ -123,11 +178,23 @@ export default function StatisticsScreen() {
 
         if (stats.monthInfo) {
           const startDate = stats.monthInfo.startDate;
-          const endDate = isBefore(today, stats.monthInfo.endDate) ? today : stats.monthInfo.endDate;
+          const today = getToday();
+          const effectiveCurrentDate = isViewingPreviousMonth ? stats.monthInfo.endDate : today;
+          const endDate = isBefore(effectiveCurrentDate, stats.monthInfo.endDate)
+            ? effectiveCurrentDate
+            : stats.monthInfo.endDate;
 
           const [prodRes, suppRes] = await Promise.all([
-            getProductionEntriesByDateRange(activeUserId, formatToYYYYMMDD(startDate), formatToYYYYMMDD(endDate)),
-            getSupplementaryDataByDateRange(activeUserId, formatToYYYYMMDD(startDate), formatToYYYYMMDD(endDate)),
+            getProductionEntriesByDateRange(
+              activeUserId,
+              formatToYYYYMMDD(startDate),
+              formatToYYYYMMDD(endDate)
+            ),
+            getSupplementaryDataByDateRange(
+              activeUserId,
+              formatToYYYYMMDD(startDate),
+              formatToYYYYMMDD(endDate)
+            ),
           ]);
 
           const productionEntries = prodRes.data || [];
@@ -137,40 +204,52 @@ export default function StatisticsScreen() {
           const supplementaryDates = new Set(supplementaryData.map(d => d.date));
           const allDaysInPeriod = eachDayOfInterval({ start: startDate, end: endDate });
           const missingDays: Date[] = [];
-          
+
           for (const day of allDaysInPeriod) {
             if (getDay(day) === 0) continue;
-            
+
             const dateString = formatToYYYYMMDD(day);
             const hasProduction = productionDates.has(dateString);
             const hasSupplementary = supplementaryDates.has(dateString);
-            
+
             if (!hasProduction && !hasSupplementary) {
               missingDays.push(day);
             }
           }
           setMissingDataDays(missingDays);
         }
-    }
-    setIsLoading(false);
-  }, [activeUserId]);
-
-  useFocusEffect(
-    useCallback(() => {
-      if (activeUserId) {
-        loadStatisticsData();
       }
-    }, [activeUserId, loadStatisticsData])
+      setIsLoading(false);
+    },
+    [activeUserId, isViewingPreviousMonth]
   );
+
+  useEffect(() => {
+    if (activeUserId) {
+      loadStatisticsData(targetDate);
+    }
+  }, [activeUserId, targetDate, loadStatisticsData]);
 
   const renderFooter = () => {
     const diff = totalProductWorkDone - targetProductWork;
     if (diff > 0) {
-      return <Text style={[styles.footerText, styles.footerTextSuccess]}>Bạn đang dư {diff.toFixed(2)} công</Text>;
+      return (
+        <Text style={[styles.footerText, styles.footerTextSuccess]}>
+          Bạn đang dư {diff.toFixed(2)} công
+        </Text>
+      );
     } else if (diff < 0) {
-      return <Text style={[styles.footerText, styles.footerTextDanger]}>Bạn đang thiếu {Math.abs(diff).toFixed(2)} công</Text>;
+      return (
+        <Text style={[styles.footerText, styles.footerTextDanger]}>
+          Bạn đang thiếu {Math.abs(diff).toFixed(2)} công
+        </Text>
+      );
     } else if (targetProductWork > 0) {
-      return <Text style={[styles.footerText, styles.footerTextNeutral]}>Bạn đã hoàn thành mục tiêu công</Text>;
+      return (
+        <Text style={[styles.footerText, styles.footerTextNeutral]}>
+          Bạn đã hoàn thành mục tiêu công
+        </Text>
+      );
     }
     return null;
   };
@@ -203,7 +282,7 @@ export default function StatisticsScreen() {
         <Text style={styles.errorText}>{errorLoading}</Text>
         <Button
           title="Thử Lại"
-          onPress={loadStatisticsData}
+          onPress={() => loadStatisticsData(targetDate)}
           style={{ marginTop: theme.spacing['level-4'] }}
         />
       </View>
@@ -226,16 +305,22 @@ export default function StatisticsScreen() {
       contentContainerStyle={styles.contentContainer}
     >
       <View style={styles.statsContainer}>
-        {renderStatRow(`Ngày công chuẩn tháng ${currentEstronMonth?.estronMonth || ''}:`, standardWorkdaysForMonth.toFixed(1), 'ngày')}
-        {renderStatRow('Ngày công tính đến hiện tại:', standardWorkdaysToCurrent.toFixed(1), 'ngày')}
+        {renderStatRow(
+          `Ngày công chuẩn tháng ${currentEstronMonth?.estronMonth || ''}:`,
+          standardWorkdaysForMonth.toFixed(1),
+          'ngày'
+        )}
+        {renderStatRow(
+          'Ngày công tính đến hiện tại:',
+          standardWorkdaysToCurrent.toFixed(1),
+          'ngày'
+        )}
         {renderStatRow('Công sản phẩm cần thực hiện:', targetProductWork.toFixed(2), 'công')}
         {renderStatRow('Công sản phẩm đã thực hiện:', totalProductWorkDone.toFixed(2), 'công')}
         {renderStatRow('Số ngày nghỉ:', totalLeaveDays.toFixed(1), 'ngày')}
         {renderStatRow('Số giờ tăng ca:', totalOvertimeHours.toFixed(1), 'giờ')}
         {renderStatRow('Hỗ trợ:', totalMeetingMinutes, 'phút')}
-        <View style={styles.footerContainer}>
-          {renderFooter()}
-        </View>
+        <View style={styles.footerContainer}>{renderFooter()}</View>
         {missingDataDays.length > 0 && (
           <View style={styles.warningContainer}>
             {missingDataDays.map(day => (
@@ -248,37 +333,52 @@ export default function StatisticsScreen() {
       </View>
       {weeklyStatistics.length > 0 && (
         <View style={styles.weeklyStatsSection}>
-            <Text style={styles.sectionTitle}>Thống kê sản lượng theo tuần</Text>
-            {weeklyStatistics.map(weekStat => (
-                <View key={weekStat.weekInfo.name} style={styles.weekCard}>
-                    <View style={styles.weekCardHeader}>
-                        <Text style={styles.weekCardTitle}>{`${weekStat.weekInfo.name} (${formatDate(weekStat.weekInfo.startDate, 'dd/MM')} - ${formatDate(weekStat.weekInfo.endDate, 'dd/MM')})`}</Text>
-                        <Text style={styles.weekCardTotalWork}>Tổng: {weekStat.totalWorkInWeek.toLocaleString()} công</Text>
-                    </View>
-                    <View style={styles.weekCardBody}>
-                        {weekStat.productStats && weekStat.productStats.map((prodStat, index) => (
-                            <View
-                                key={prodStat.product_code}
-                                style={[
-                                    styles.productStatRow,
-                                    (index < (weekStat.productStats?.length ?? 1) - 1 || (weekStat.totalMeetingMinutesInWeek ?? 0) > 0) && styles.productStatRowBorder
-                                ]}
-                            >
-                                <Text style={styles.productNameText} numberOfLines={1}>{`${prodStat.product_code} `}</Text>
-                                <Text style={styles.productValueText}>{`${prodStat.total_quantity.toLocaleString()} pcs (${prodStat.total_work_done.toLocaleString()} công)`}</Text>
-                            </View>
-                        ))}
-                        {(weekStat.totalMeetingMinutesInWeek ?? 0) > 0 && (
-                           <View style={styles.productStatRow}>
-                                <Text style={styles.productNameText}>Hỗ trợ:</Text>
-                                <Text style={styles.productValueText}>
-                                    {`${weekStat.totalMeetingMinutesInWeek} phút (${((weekStat.totalMeetingMinutesInWeek ?? 0) / 480).toFixed(2)} công)`}
-                                </Text>
-                            </View>
-                        )}
-                    </View>
+          <Text style={styles.sectionTitle}>THỐNG KÊ TUẦN</Text>
+          {weeklyStatistics.map(weekStat => (
+            <View key={weekStat.weekInfo.name} style={styles.weekCard}>
+              <View style={styles.weekCardHeader}>
+                <Text
+                  style={styles.weekCardTitle}
+                >{`${weekStat.weekInfo.name} (${formatDate(weekStat.weekInfo.startDate, 'dd/MM')} - ${formatDate(weekStat.weekInfo.endDate, 'dd/MM')})`}</Text>
+                <View style={{ flexDirection: 'row', alignItems: 'baseline' }}>
+                  <Text style={styles.weekCardTotalWorkLabel}>Tổng công: </Text>
+                  <Text style={styles.weekCardTotalWorkValue}>
+                    {weekStat.totalWorkInWeek.toLocaleString()}
+                  </Text>
                 </View>
-            ))}
+              </View>
+              <View style={styles.weekCardBody}>
+                {weekStat.productStats &&
+                  weekStat.productStats.map((prodStat, index) => (
+                    <View
+                      key={prodStat.product_code}
+                      style={[
+                        styles.productStatRow,
+                        (index < (weekStat.productStats?.length ?? 1) - 1 ||
+                          (weekStat.totalMeetingMinutesInWeek ?? 0) > 0) &&
+                          styles.productStatRowBorder,
+                      ]}
+                    >
+                      <Text
+                        style={styles.productNameText}
+                        numberOfLines={1}
+                      >{`${prodStat.product_code} `}</Text>
+                      <Text
+                        style={styles.productValueText}
+                      >{`${prodStat.total_quantity.toLocaleString()} pcs (${prodStat.total_work_done.toLocaleString()} công)`}</Text>
+                    </View>
+                  ))}
+                {(weekStat.totalMeetingMinutesInWeek ?? 0) > 0 && (
+                  <View style={styles.productStatRow}>
+                    <Text style={styles.productNameText}>Hỗ trợ:</Text>
+                    <Text style={styles.productValueText}>
+                      {`${weekStat.totalMeetingMinutesInWeek} phút (${((weekStat.totalMeetingMinutesInWeek ?? 0) / 480).toFixed(2)} công)`}
+                    </Text>
+                  </View>
+                )}
+              </View>
+            </View>
+          ))}
         </View>
       )}
     </ScrollView>
@@ -288,7 +388,12 @@ export default function StatisticsScreen() {
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: theme.colors.background1 },
   contentContainer: { flexGrow: 1, paddingBottom: theme.spacing['level-7'] },
-  centered: { flex: 1, justifyContent: 'center', alignItems: 'center', padding: theme.spacing['level-6'] },
+  centered: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: theme.spacing['level-6'],
+  },
   loadingText: {
     marginTop: theme.spacing['level-4'],
     fontSize: theme.typography.fontSize['level-4'],
@@ -324,11 +429,11 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   statsValue: {
+    flex:1,
     fontSize: theme.typography.fontSize['level-4'],
     color: theme.colors.success,
     fontWeight: theme.typography.fontWeight['bold'],
     textAlign: 'right',
-    minWidth: 80,
     paddingRight: theme.spacing['level-2'],
   },
   statsUnit: {
@@ -336,7 +441,7 @@ const styles = StyleSheet.create({
     color: theme.colors.text,
     fontStyle: 'italic',
     textAlign: 'left',
-    minWidth: 50,
+    minWidth: 40,
   },
   footerContainer: {
     paddingVertical: theme.spacing['level-4'],
@@ -361,15 +466,16 @@ const styles = StyleSheet.create({
   footerTextSuccess: { color: theme.colors.success },
   footerTextDanger: { color: theme.colors.danger },
   footerTextNeutral: { color: theme.colors.text },
-  weeklyStatsSection: { 
-      marginTop: theme.spacing['level-6'],
-      paddingHorizontal: theme.spacing['level-3'],
+  weeklyStatsSection: {
+    marginTop: theme.spacing['level-6'],
+    paddingHorizontal: theme.spacing['level-3'],
   },
   sectionTitle: {
     fontSize: theme.typography.fontSize['level-6'],
     fontWeight: theme.typography.fontWeight['bold'],
     color: theme.colors.text,
     marginBottom: theme.spacing['level-4'],
+    textAlign: 'center'
   },
   weekCard: {
     backgroundColor: theme.colors.background2,
@@ -381,7 +487,7 @@ const styles = StyleSheet.create({
   weekCardHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    alignItems: 'center',
+    alignContent: 'center',
     backgroundColor: theme.colors.background3,
     paddingVertical: theme.spacing['level-3'],
     paddingHorizontal: theme.spacing['level-4'],
@@ -393,11 +499,19 @@ const styles = StyleSheet.create({
     fontWeight: theme.typography.fontWeight['bold'],
     color: theme.colors.text,
   },
-  weekCardTotalWork: {
+
+  weekCardTotalWorkLabel: {
+    fontSize: theme.typography.fontSize['level-3'],
+    fontStyle: 'italic',
+    color: theme.colors.text,
+  },
+
+  weekCardTotalWorkValue: {
     fontSize: theme.typography.fontSize['level-3'],
     fontWeight: theme.typography.fontWeight['bold'],
     color: theme.colors.success,
   },
+
   weekCardBody: {
     padding: theme.spacing['level-4'],
     paddingVertical: 0,

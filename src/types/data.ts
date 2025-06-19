@@ -65,7 +65,6 @@ export interface QuotaSetting {
 export interface UserSelectedQuota {
   user_id: string; // PK
   product_code: string; // PK
-  product_name: string;
   zindex: number;
   created_at?: string;
 }
