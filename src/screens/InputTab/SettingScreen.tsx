@@ -109,10 +109,10 @@ export default function SettingScreen() {
   }, [activeUserId]);
 
   useEffect(() => {
-    if (isFocused && activeUserId) {
+    if (activeUserId) {
       loadUserQuotas();
     }
-  }, [isFocused, activeUserId, loadUserQuotas]);
+  }, [ activeUserId, loadUserQuotas]);
 
   const handleSaveOrder = useCallback(async () => {
     if (!activeUserId) {
