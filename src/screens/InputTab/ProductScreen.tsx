@@ -1,5 +1,5 @@
 // src/screens/InputTab/ProductScreen.tsx
-import React, { useState, useCallback, useLayoutEffect, useMemo } from 'react'; // <<< Thêm useMemo
+import React, { useState, useCallback, useLayoutEffect, useMemo } from 'react';
 import { View, Text, StyleSheet, ActivityIndicator, Platform, TouchableOpacity, FlatList } from 'react-native';
 import type { StackNavigationProp } from '@react-navigation/stack';
 import { useNavigation, useFocusEffect } from '@react-navigation/native';
@@ -9,32 +9,30 @@ import { addDays } from 'date-fns';
 import { InputStackNavigatorParamList } from '../../navigation/types';
 import { theme } from '../../theme';
 import { ProductionEntry } from '../../types/data';
-import { getToday } from '../../utils/dateUtils';
+import { getToday, getEstronMonthPeriod } from '../../utils/dateUtils'; // <<< THAY ĐỔI: IMPORT THÊM
 import DailyCard from './components/DailyCard';
 import Button from '../../components/common/Button';
 import AlertModal, { AlertButtonType } from '../../components/common/AlertModal';
 import { useProductionStore } from '../../stores/productionStore';
 import { useAuthStore } from '../../stores/authStore';
-import { useSettingsStore } from '../../stores/settingsStore'; // <<< Thêm import
+import { useSettingsStore } from '../../stores/settingsStore';
 
 type ProductScreenNavigationProp = StackNavigationProp<InputStackNavigatorParamList, 'ProductList'>;
 
 export default function ProductScreen() {
   const navigation = useNavigation<ProductScreenNavigationProp>();
 
-  const {
-    userSelectedQuotas,
-    processedDaysData,
-    estronWeekInfo,
-    isLoading,
-    isViewingPreviousMonth,
-    initialize,
-    cleanup,
-    setTargetDate,
-  } = useProductionStore();
+  // Tối ưu bằng cách sử dụng selectors riêng lẻ
+  const isLoading = useProductionStore(state => state.isLoading);
+  const processedDaysData = useProductionStore(state => state.processedDaysData);
+  const estronWeekInfo = useProductionStore(state => state.estronWeekInfo);
+  const initialize = useProductionStore(state => state.initialize);
+  const cleanup = useProductionStore(state => state.cleanup);
+  const setTargetDate = useProductionStore(state => state.setTargetDate);
+  const userSelectedQuotas = useProductionStore(state => state.userSelectedQuotas);
   
   const activeUserId = useAuthStore(state => state.authUser?.profile.id);
-  const showSunday = useSettingsStore(state => state.showSunday); // <<< Lấy trạng thái từ store
+  const showSunday = useSettingsStore(state => state.showSunday);
 
   const [isCustomAlertVisible, setIsCustomAlertVisible] = useState(false);
   const [customAlertMessage, setCustomAlertMessage] = useState('');
@@ -47,15 +45,13 @@ export default function ProductScreen() {
   };
   const closeAlert = () => setIsCustomAlertVisible(false);
 
-  // <<< START: Lọc dữ liệu hiển thị bằng useMemo >>>
   const filteredDaysData = useMemo(() => {
     if (showSunday) {
       return processedDaysData;
     }
     return processedDaysData.filter(day => day.dayOfWeek !== 'Chủ Nhật');
   }, [processedDaysData, showSunday]);
-  // <<< END: Lọc dữ liệu hiển thị bằng useMemo >>>
-
+  
   useFocusEffect(
     useCallback(() => {
       if (activeUserId) {
@@ -79,12 +75,20 @@ export default function ProductScreen() {
   }, [setTargetDate]);
 
   useLayoutEffect(() => {
+    // <<< START: LOGIC SỬA LỖI >>>
+    // Lấy thông tin tháng Estron của ngày hôm nay để làm mốc so sánh
+    const currentEstronMonth = getEstronMonthPeriod(getToday());
+    // So sánh tên (định danh duy nhất) của tháng đang hiển thị với tháng hiện tại
+    const isViewingPreviousMonth = estronWeekInfo?.estronMonth.name !== currentEstronMonth.name;
+    // <<< END: LOGIC SỬA LỖI >>>
+    
     if (estronWeekInfo) {
       navigation.setOptions({
         title: `Sản lượng tháng ${estronWeekInfo.estronMonth.estronMonth}`,
         headerLeft: () => (
           <TouchableOpacity
             onPress={handleNavigateToPreviousMonth}
+            // Mũi tên lùi sẽ bị vô hiệu hóa khi đang xem tháng trước đó
             disabled={isViewingPreviousMonth}
             style={{ marginLeft: Platform.OS === 'ios' ? theme.spacing['level-2'] : theme.spacing['level-4'], padding: theme.spacing['level-1'] }}
           >
@@ -98,6 +102,7 @@ export default function ProductScreen() {
         headerRight: () => (
             <TouchableOpacity
               onPress={handleNavigateToCurrentMonth}
+              // Mũi tên tiến chỉ bật khi đang xem tháng trước
               disabled={!isViewingPreviousMonth}
               style={{ marginRight: Platform.OS === 'ios' ? theme.spacing['level-2'] : theme.spacing['level-4'], padding: theme.spacing['level-1'] }}
             >
@@ -112,7 +117,7 @@ export default function ProductScreen() {
     } else {
       navigation.setOptions({ title: 'Sản Lượng Estron', headerLeft: () => null, headerRight: () => null });
     }
-  }, [navigation, estronWeekInfo, isViewingPreviousMonth, handleNavigateToPreviousMonth, handleNavigateToCurrentMonth]);
+  }, [navigation, estronWeekInfo, handleNavigateToPreviousMonth, handleNavigateToCurrentMonth]);
 
   const handleAddProduction = (date: string) => {
     navigation.navigate('InputDetails', { date });
@@ -143,7 +148,7 @@ export default function ProductScreen() {
       </View>
     );
   }
-  if (activeUserId && !isLoading && (!estronWeekInfo || filteredDaysData.length === 0)) { // <<< Sửa đổi điều kiện
+  if (activeUserId && !isLoading && (!estronWeekInfo || filteredDaysData.length === 0)) {
     return (
       <View style={styles.centered}>
         <Text style={styles.emptyText}>Không có dữ liệu ngày để hiển thị cho tháng này.</Text>
@@ -154,9 +159,9 @@ export default function ProductScreen() {
 
   return (
     <View style={styles.container}>
-      {activeUserId && filteredDaysData.length > 0 && ( // <<< Sửa đổi điều kiện
+      {activeUserId && filteredDaysData.length > 0 && (
         <FlatList
-          data={filteredDaysData} // <<< Sử dụng dữ liệu đã lọc
+          data={filteredDaysData}
           renderItem={({ item }) => (
             <DailyCard
               userId={activeUserId}

@@ -29,6 +29,7 @@ export default function MenuScreen() {
     { name: 'Công đoạn chuyên môn', screen: 'Setting', icon: 'construct-outline' },
     { name: 'Tra cứu định mức', screen: 'LookupNorms', icon: 'search-circle-outline' },
     { name: 'Tra cứu mã lỗi', screen: 'LookupErrors', icon: 'bug-outline' },
+    { name: 'Quy đổi công đoạn', screen: 'ConversionTool', icon: 'swap-horizontal-outline' },
     { name: 'Cài đặt', screen: 'GeneralSettings', icon: 'options-outline' },
   ] as const;
 
@@ -121,7 +122,9 @@ const styles = StyleSheet.create({
     marginLeft: theme.spacing['level-3'],
   },
   logoutSection: {
-    padding: theme.spacing['level-6'],
-    marginTop: theme.spacing['level-5']
+    marginHorizontal: '20%',
+    marginTop: theme.spacing['level-8'],
+    borderRadius: theme.borderRadius['round'],
+    overflow: 'hidden',
   }
 });

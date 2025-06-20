@@ -330,24 +330,24 @@ export const updateProductionEntryById = async (
     }
 };
 
-export const getStatisticsRPC = async (
-    userId: string,
-    date: Date
-): Promise<{ data: any | null; error: Error | null }> => {
-    if (!userId) return { data: null, error: createError("userId không hợp lệ.") };
-    try {
-        const dateString = formatToYYYYMMDD(date);
-        const { data, error: supaError } = await supabase.rpc('get_user_monthly_stats', {
-            user_id_param: userId,
-            today_param: dateString
-        });
+// export const getStatisticsRPC = async (
+//     userId: string,
+//     date: Date
+// ): Promise<{ data: any | null; error: Error | null }> => {
+//     if (!userId) return { data: null, error: createError("userId không hợp lệ.") };
+//     try {
+//         const dateString = formatToYYYYMMDD(date);
+//         const { data, error: supaError } = await supabase.rpc('get_user_monthly_stats', {
+//             user_id_param: userId,
+//             today_param: dateString
+//         });
 
-        if (supaError) throw createError(`Không thể lấy dữ liệu thống kê từ máy chủ: ${supaError.message}`, supaError);
-        return { data, error: null };
-    } catch (e: any) {
-        return { data: null, error: e };
-    }
-};
+//         if (supaError) throw createError(`Không thể lấy dữ liệu thống kê từ máy chủ: ${supaError.message}`, supaError);
+//         return { data, error: null };
+//     } catch (e: any) {
+//         return { data: null, error: e };
+//     }
+// };
 
 export const clearAllLocalData = async () => {
     // This function is intended for local data sources like AsyncStorage, which are not used for primary data storage in this app.

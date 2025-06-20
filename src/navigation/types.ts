@@ -18,6 +18,7 @@ export type MenuStackNavigatorParamList = {
   Setting: undefined;
   LookupNorms: undefined;
   LookupErrors: undefined;
+  ConversionTool: undefined; 
   GeneralSettings: undefined;
 };
 

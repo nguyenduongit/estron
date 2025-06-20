@@ -7,7 +7,16 @@ import { theme } from '../../../theme';
 import { DailyProductionData, DailySupplementaryData, ProductionEntry } from '../../../types/data';
 import AggregatedEntryRow from './AggregatedEntryRow';
 import AdditionalInfo from './AdditionalInfo';
-// <<< Không cần import useSettingsStore ở đây nữa
+
+const dayColorMap: { [key: string]: keyof typeof theme.colors } = {
+  'Chủ Nhật': 'sunday',
+  'Thứ 2': 'monday',
+  'Thứ 3': 'tuesday',
+  'Thứ 4': 'wednesday',
+  'Thứ 5': 'thursday',
+  'Thứ 6': 'friday',
+  'Thứ 7': 'saturday',
+};
 
 interface DailyCardProps {
   userId: string;
@@ -24,7 +33,6 @@ const DailyCard: React.FC<DailyCardProps> = ({
   onAddProduction,
   onEditEntry,
 }) => {
-  // <<< Xóa bỏ logic kiểm tra showSunday và isSunday ở đây
   const [isAdditionalInfoExpanded, setIsAdditionalInfoExpanded] = useState(false);
   const [suppData, setSuppData] = useState<DailySupplementaryData | null | undefined>(
     dailyInfo.supplementaryData
@@ -79,48 +87,31 @@ const DailyCard: React.FC<DailyCardProps> = ({
 
   const sortedGroupKeys = Object.keys(groupedEntries).sort();
 
-  const isSunday = dailyInfo.dayOfWeek === 'Chủ Nhật';
-  const isSaturday = dailyInfo.dayOfWeek === 'Thứ 7';
-  const isWeekend = isSunday || isSaturday;
+  const dayIndicatorColor = dayColorMap[dailyInfo.dayOfWeek]
+    ? theme.colors[dayColorMap[dailyInfo.dayOfWeek]]
+    : 'transparent';
 
   return (
     <View style={styles.dailyCard}>
-      <View
-        style={[
-          styles.cardHeader,
-          isSunday && styles.sundayHeader,
-          isSaturday && styles.saturdayHeader,
-        ]}
-      >
-        <Text
-          style={[styles.cardDateText, isWeekend && styles.weekendHeaderText]}
-        >{`${dailyInfo.dayOfWeek}, ${dailyInfo.formattedDate}`}</Text>
+      <View style={styles.cardHeader}>
+        <View style={[styles.slantedCorner, { borderTopColor: dayIndicatorColor }]} />
+        <Text style={styles.cardDateText}>
+          {`${dailyInfo.dayOfWeek}, ${dailyInfo.formattedDate}`}
+        </Text>
         <View style={styles.headerRightContainer}>
           <View style={styles.iconGroup}>
             {suppData?.overtimeHours && suppData.overtimeHours > 0 && (
               <Ionicons
                 name="time"
                 size={14}
-                color={
-                  isWeekend
-                    ? theme.colors.white
-                    : suppData.overtimeVerified
-                      ? theme.colors.success
-                      : theme.colors.grey
-                }
+                color={suppData.overtimeVerified ? theme.colors.success : theme.colors.grey}
               />
             )}
             {suppData?.meetingMinutes && suppData.meetingMinutes > 0 && (
               <Ionicons
                 name="briefcase"
                 size={14}
-                color={
-                  isWeekend
-                    ? theme.colors.white
-                    : suppData.meetingVerified
-                      ? theme.colors.success
-                      : theme.colors.grey
-                }
+                color={suppData.meetingVerified ? theme.colors.success : theme.colors.grey}
                 style={styles.headerIcon}
               />
             )}
@@ -128,23 +119,15 @@ const DailyCard: React.FC<DailyCardProps> = ({
               <Ionicons
                 name="bed"
                 size={14}
-                color={
-                  isWeekend
-                    ? theme.colors.white
-                    : suppData.leaveVerified
-                      ? theme.colors.success
-                      : theme.colors.grey
-                }
+                color={suppData.leaveVerified ? theme.colors.success : theme.colors.grey}
                 style={styles.headerIcon}
               />
             )}
           </View>
           {weekHasData && (
             <View style={styles.cardTotalWorkContainer}>
-              <Text style={[styles.cardTotalWorkLabel, isWeekend && styles.weekendHeaderText]}>
-                Tổng công:{' '}
-              </Text>
-              <Text style={[styles.cardTotalWorkValue, isWeekend && styles.weekendHeaderText]}>
+              <Text style={styles.cardTotalWorkLabel}>Tổng công:{' '}</Text>
+              <Text style={styles.cardTotalWorkValue}>
                 {dailyInfo.totalWorkForDay != null ? dailyInfo.totalWorkForDay.toFixed(2) : '0.00'}
               </Text>
             </View>
@@ -240,23 +223,25 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    paddingBottom: theme.spacing['level-2'],
-    paddingTop: theme.spacing['level-2'],
     paddingHorizontal: theme.spacing['level-4'],
     borderBottomWidth: 1,
     borderBottomColor: theme.colors.borderColor,
     backgroundColor: theme.colors.background3,
     borderTopLeftRadius: theme.borderRadius['level-4'],
     borderTopRightRadius: theme.borderRadius['level-4'],
+    overflow: 'hidden',
   },
-  saturdayHeader: {
-    backgroundColor: theme.colors.saturday,
-  },
-  sundayHeader: {
-    backgroundColor: theme.colors.sunday,
-  },
-  weekendHeaderText: {
-    color: theme.colors.textOnPrimary,
+  slantedCorner: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    width: 0,
+    height: 0,
+    backgroundColor: 'transparent',
+    borderStyle: 'solid',
+    borderRightWidth: 20,
+    borderTopWidth: 20,
+    borderRightColor: 'transparent',
   },
   headerRightContainer: {
     flex: 1,
@@ -278,6 +263,7 @@ const styles = StyleSheet.create({
     fontSize: theme.typography.fontSize['level-3'],
     fontWeight: theme.typography.fontWeight['bold'],
     color: theme.colors.text,
+    marginLeft: theme.spacing['level-2'],
   },
   cardTotalWorkContainer: {
     flex: 1,
@@ -317,6 +303,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: theme.spacing['level-4'],
     borderTopWidth: 1,
     borderTopColor: theme.colors.borderColor,
+    
   },
   addProductionButton: {
     height: 40,

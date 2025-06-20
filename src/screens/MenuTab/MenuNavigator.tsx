@@ -9,6 +9,7 @@ import MenuScreen from './MenuScreen';
 import SettingScreen from '../InputTab/SettingScreen'; // Path to existing SettingScreen
 import LookupNormsScreen from './LookupNormsScreen';
 import LookupErrorsScreen from './LookupErrorsScreen';
+import ConversionToolScreen from './ConversionToolScreen'; 
 import GeneralSettingsScreen from './GeneralSettingsScreen';
 
 const MenuStack = createStackNavigator<MenuStackNavigatorParamList>();
@@ -27,6 +28,7 @@ export default function MenuNavigator() {
       <MenuStack.Screen name="Setting" component={SettingScreen} options={{ title: 'Công đoạn chuyên môn' }} />
       <MenuStack.Screen name="LookupNorms" component={LookupNormsScreen} options={{ title: 'Tra cứu định mức' }} />
       <MenuStack.Screen name="LookupErrors" component={LookupErrorsScreen} options={{ title: 'Tra cứu mã lỗi' }} />
+      <MenuStack.Screen name="ConversionTool" component={ConversionToolScreen} options={{ title: 'Quy đổi công đoạn' }} />
       <MenuStack.Screen name="GeneralSettings" component={GeneralSettingsScreen} options={{ title: 'Cài đặt' }} />
     </MenuStack.Navigator>
   );

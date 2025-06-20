@@ -282,6 +282,8 @@ const styles = StyleSheet.create({
     borderTopWidth: 1,
     borderTopColor: theme.colors.borderColor,
     backgroundColor: theme.colors.cardBackground,
+    borderBottomRightRadius: theme.borderRadius['level-3'],
+    borderBottomLeftRadius: theme.borderRadius['level-3'],
   },
   warningText: {
     color: theme.colors.danger,

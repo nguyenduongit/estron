@@ -202,7 +202,7 @@ const styles = StyleSheet.create({
   },
   dropdownContainer: {
     position: 'absolute',
-    backgroundColor: theme.colors.cardBackground,
+    backgroundColor: theme.colors.background1,
     borderWidth: 1,
     borderColor: theme.colors.borderColor, // Sửa màu viền
     borderTopWidth: 0, // Bỏ viền trên
