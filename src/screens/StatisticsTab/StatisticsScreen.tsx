@@ -179,8 +179,8 @@ export default function StatisticsScreen() {
       <View style={styles.statsContainer}>
         {renderStatRow(`Ngày công chuẩn tháng ${estronWeekInfo?.estronMonth.estronMonth || ''}`, standardWorkdaysForMonth.toFixed(1), 'ngày')}
         {renderStatRow('Ngày công tính đến hiện tại', standardWorkdaysToCurrent.toFixed(1), 'ngày')}
-        {renderStatRow('Công sản phẩm cần thực hiện', monthlyTargetWork, 'công')}
-        {renderStatRow('Công sản phẩm đã thực hiện', totalProductWorkDone, 'công')}
+        {renderStatRow('Công sản phẩm cần thực hiện', monthlyTargetWork.toFixed(3), 'công')}
+        {renderStatRow('Công sản phẩm đã thực hiện', totalProductWorkDone.toFixed(3), 'công')}
         {renderStatRow('Số ngày nghỉ', totalLeaveDays.toFixed(1), 'ngày')}
         {renderStatRow('Số giờ tăng ca', totalOvertimeHours.toFixed(0), 'giờ')}
         {renderStatRow('Hỗ trợ', totalMeetingMinutes.toFixed(0), 'phút')}
@@ -189,9 +189,9 @@ export default function StatisticsScreen() {
           {(() => {
             const diff = totalProductWorkDone - monthlyTargetWork;
             if (diff >= 0) {
-              return <Text style={[styles.footerText, styles.footerTextSuccess]}>Bạn đang dư {diff.toFixed(2)} công</Text>;
+              return <Text style={[styles.footerText, styles.footerTextSuccess]}>Bạn đang dư {diff.toFixed(3)} công</Text>;
             }
-            return <Text style={[styles.footerText, styles.footerTextDanger]}>Bạn đang thiếu {Math.abs(diff).toFixed(2)} công</Text>;
+            return <Text style={[styles.footerText, styles.footerTextDanger]}>Bạn đang thiếu {Math.abs(diff).toFixed(3)} công</Text>;
           })()}
         </View>
       </View>
@@ -228,7 +228,7 @@ export default function StatisticsScreen() {
                             <Text style={styles.quantityValue}>{prodStat.total_quantity.toLocaleString()}</Text>
                             <Text style={styles.quantityUnit}>pcs</Text>
                         </View>
-                        <Text style={[styles.columnText, styles.columnWork]}>{prodStat.total_work_done.toFixed(2)}</Text>
+                        <Text style={[styles.columnText, styles.columnWork]}>{prodStat.total_work_done.toFixed(3)}</Text>
                       </View>
                     ))}
                     {(weekStat.totalMeetingMinutesInWeek ?? 0) > 0 && (
@@ -250,7 +250,7 @@ export default function StatisticsScreen() {
               <View style={styles.weekCardFooter}>
                 <Text style={styles.weekCardTotalWorkLabel}>Tổng công tuần</Text>
                 <Text style={[styles.weekCardTotalWorkValue, { color: isTargetMet ? theme.colors.success : theme.colors.danger }]}>
-                  {totalWorkInWeek.toFixed(2)}
+                  {totalWorkInWeek.toFixed(3)}
                 </Text>
               </View>
             </View>
