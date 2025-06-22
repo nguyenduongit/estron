@@ -128,7 +128,7 @@ const DailyCard: React.FC<DailyCardProps> = ({
             <View style={styles.cardTotalWorkContainer}>
               <Text style={styles.cardTotalWorkLabel}>Tổng công:{' '}</Text>
               <Text style={styles.cardTotalWorkValue}>
-                {dailyInfo.totalWorkForDay != null ? dailyInfo.totalWorkForDay.toFixed(2) : '0.00'}
+                {dailyInfo.totalWorkForDay != null ? dailyInfo.totalWorkForDay.toFixed(3) : '0.000'}
               </Text>
             </View>
           )}
