@@ -31,6 +31,9 @@ import {
   calculateStandardWorkdays,
   getEstronWeeks,
   EstronWeekPeriod,
+  startOfDay,
+  endOfDay,
+  isWithinInterval
 } from '../utils/dateUtils';
 
 
@@ -71,14 +74,14 @@ export interface ProductState {
   isLoading: boolean;
   error: string | null;
   subscriptions: RealtimeChannel[];
-  statistics: StatisticsData | null; // Dành cho màn hình thống kê
+  statistics: StatisticsData | null;
 }
 
 export interface ProductActions {
   setTargetDate: (date: Date) => void;
   initialize: (userId: string) => void;
   cleanup: () => void;
-  processAndCalculateAllData: () => void; // Hàm tính toán thống kê
+  processAndCalculateAllData: (dataForCalculation: DailyProductionData[]) => void;
 }
 
 export const useProductionStore = create<ProductState & ProductActions>((set, get) => ({
@@ -96,11 +99,9 @@ export const useProductionStore = create<ProductState & ProductActions>((set, ge
   setTargetDate: (date) => {
     const currentInfo = get().estronWeekInfo;
     const newInfo = getCurrentEstronWeekInfo(date);
-    // Chỉ tải lại dữ liệu nếu người dùng chuyển sang tháng Estron khác
     if (currentInfo?.estronMonth.name !== newInfo.estronMonth.name) {
       const userId = get().userProfile?.id;
       if (userId) {
-        // Cập nhật ngày và tải lại dữ liệu cho tháng mới
         set({ targetDate: date });
         get().initialize(userId);
       }
@@ -109,8 +110,9 @@ export const useProductionStore = create<ProductState & ProductActions>((set, ge
     }
   },
 
-  processAndCalculateAllData: () => {
-    const { processedDaysData, estronWeekInfo, userProfile } = get();
+  processAndCalculateAllData: (dataForCalculation: DailyProductionData[]) => {
+    const { estronWeekInfo, userProfile } = get();
+    const processedDaysData = dataForCalculation;
 
     if (!estronWeekInfo || !userProfile) {
       set({ statistics: null });
@@ -118,54 +120,70 @@ export const useProductionStore = create<ProductState & ProductActions>((set, ge
     }
 
     const today = getToday();
-    const allSupplementaryData = processedDaysData.map(d => d.supplementaryData).filter(Boolean) as DailySupplementaryData[];
     const monthInfo = estronWeekInfo.estronMonth;
-    const calculationEndDateForMonth = isBefore(today, monthInfo.endDate) ? today : monthInfo.endDate;
 
+    const calculationEndDateForMonth = isBefore(today, monthInfo.endDate) ? today : monthInfo.endDate;
     const standardWorkdaysForMonth = calculateStandardWorkdays(monthInfo.startDate, monthInfo.endDate);
     const standardWorkdaysToCurrent = calculateStandardWorkdays(monthInfo.startDate, calculationEndDateForMonth);
     const totalProductWorkDone = processedDaysData.reduce((sum, day) => sum + (day.totalWorkForDay || 0), 0);
+    
+    const allSupplementaryData = processedDaysData.map(d => d.supplementaryData).filter(Boolean) as DailySupplementaryData[];
     const totalLeaveHours = allSupplementaryData.reduce((sum, d) => sum + (d.leaveHours || 0), 0);
     const totalMeetingMinutes = allSupplementaryData.reduce((sum, d) => sum + (d.meetingMinutes || 0), 0);
     const totalOvertimeHours = allSupplementaryData.reduce((sum, d) => sum + (d.overtimeHours || 0), 0);
     const totalLeaveDays = totalLeaveHours / 8.0;
-    const meetingWorkdays = totalMeetingMinutes / 480.0;
-    const overtimeWorkdays = totalOvertimeHours / 8.0;
-    const monthlyTargetWork = standardWorkdaysToCurrent - totalLeaveDays - meetingWorkdays + overtimeWorkdays;
+    
+    const monthlyTargetWork = standardWorkdaysToCurrent - (totalLeaveHours / 8.0) - (totalMeetingMinutes / 480.0) + (totalOvertimeHours / 8.0);
 
     const allWeeksInMonth = getEstronWeeks(monthInfo);
-    const weeklyStatistics = allWeeksInMonth.map(weekInfo => {
-      const { startDate, endDate } = weekInfo;
-      if (isAfter(startDate, today)) return null;
 
-      const isCurrentWeek = today >= startDate && today <= endDate;
-      const calculationEndDateForWeek = isCurrentWeek ? today : endDate;
-      const daysInWeek = processedDaysData.filter(d => {
-        const dDate = parseISO(d.date);
-        return dDate >= startDate && dDate <= calculationEndDateForWeek;
-      });
-      const weekSuppData = daysInWeek.map(d => d.supplementaryData).filter(Boolean) as DailySupplementaryData[];
-      const totalWorkInWeek = daysInWeek.reduce((sum, day) => sum + (day.totalWorkForDay || 0), 0);
-      const totalMeetingMinutesInWeek = weekSuppData.reduce((sum, d) => sum + (d.meetingMinutes || 0), 0);
-      
-      const productStatsMap = new Map<string, WeeklyProductStat>();
-      daysInWeek.flatMap(d => d.entries).forEach(entry => {
-        const stageCode = entry.stageCode;
-        const existing = productStatsMap.get(stageCode) || { product_code: stageCode, product_name: get().quotaSettingsMap.get(stageCode)?.product_name || stageCode, total_quantity: 0, total_work_done: 0 };
-        existing.total_quantity += entry.quantity || 0;
-        existing.total_work_done += entry.workAmount || 0;
-        productStatsMap.set(stageCode, existing);
-      });
-      const productStats = Array.from(productStatsMap.values());
+    const weeklyStatistics = allWeeksInMonth
+        .map(weekInfo => {
+            if (isAfter(startOfDay(weekInfo.startDate), startOfDay(today))) {
+                return null;
+            }
 
-      const standardWorkdaysWeek = calculateStandardWorkdays(startDate, calculationEndDateForWeek);
-      const weekLeaveDays = weekSuppData.reduce((sum, d) => sum + (d.leaveHours || 0), 0) / 8.0;
-      const weekMeetingWorkdays = totalMeetingMinutesInWeek / 480.0;
-      const weekOvertimeWorkdays = weekSuppData.reduce((sum, d) => sum + (d.overtimeHours || 0), 0) / 8.0;
-      const weeklyTarget = standardWorkdaysWeek - weekLeaveDays  + weekOvertimeWorkdays;
-      
-      return { weekInfo, productStats, totalWorkInWeek, totalMeetingMinutesInWeek, weeklyTarget };
-    }).filter(Boolean) as WeeklyStatistics[];
+            const isCurrentWeek = today >= weekInfo.startDate && today <= weekInfo.endDate;
+            const calculationEndDateForWeek = isCurrentWeek ? endOfDay(today) : weekInfo.endDate;
+
+            const daysInWeek = processedDaysData.filter(dayData => {
+                const dDate = parseISO(dayData.date);
+                return isWithinInterval(dDate, { start: weekInfo.startDate, end: calculationEndDateForWeek });
+            });
+            
+            if (daysInWeek.length === 0) {
+                 const emptyWeeklyTarget = calculateStandardWorkdays(weekInfo.startDate, calculationEndDateForWeek);
+                 return { weekInfo, productStats: [], totalWorkInWeek: 0, totalMeetingMinutesInWeek: 0, weeklyTarget: emptyWeeklyTarget };
+            }
+            
+            const weekSuppData = daysInWeek.map(d => d.supplementaryData).filter(Boolean) as DailySupplementaryData[];
+            const totalMeetingMinutesInWeek = weekSuppData.reduce((sum, d) => sum + (d.meetingMinutes || 0), 0);
+            
+            // =========================================================================
+            // <<< START: SỬA LỖI TÍNH TỔNG CÔNG TUẦN >>>
+            const totalProductWorkInWeek = daysInWeek.reduce((sum, day) => sum + (day.totalWorkForDay || 0), 0);
+            const meetingWorkInWeek = totalMeetingMinutesInWeek / 480.0;
+            const totalWorkInWeek = totalProductWorkInWeek + meetingWorkInWeek;
+            // <<< END: SỬA LỖI TÍNH TỔNG CÔNG TUẦN >>>
+            // =========================================================================
+
+            const productStatsMap = new Map<string, WeeklyProductStat>();
+            daysInWeek.flatMap(d => d.entries).forEach(entry => {
+                const existing = productStatsMap.get(entry.stageCode) || { product_code: entry.stageCode, product_name: get().quotaSettingsMap.get(entry.stageCode)?.product_name || entry.stageCode, total_quantity: 0, total_work_done: 0 };
+                existing.total_quantity += entry.quantity || 0;
+                existing.total_work_done += entry.workAmount || 0;
+                productStatsMap.set(entry.stageCode, existing);
+            });
+            const productStats = Array.from(productStatsMap.values());
+            
+            const standardWorkdaysWeek = calculateStandardWorkdays(weekInfo.startDate, calculationEndDateForWeek);
+            const weekLeaveHours = weekSuppData.reduce((sum, d) => sum + (d.leaveHours || 0), 0);
+            const weekOvertimeHours = weekSuppData.reduce((sum, d) => sum + (d.overtimeHours || 0), 0);
+            const weeklyTarget = standardWorkdaysWeek - (weekLeaveHours / 8.0) + (weekOvertimeHours / 8.0);
+            
+            return { weekInfo, productStats, totalWorkInWeek, totalMeetingMinutesInWeek, weeklyTarget };
+        })
+        .filter(Boolean) as WeeklyStatistics[];
 
     set({
       statistics: {
@@ -247,54 +265,55 @@ export const useProductionStore = create<ProductState & ProductActions>((set, ge
             estronWeekInfo: currentEstronInfo, processedDaysData: dailyDataList, isLoading: false,
         });
 
-        get().processAndCalculateAllData(); // Tính toán thống kê sau khi tải xong
+        get().processAndCalculateAllData(dailyDataList);
 
         if (get().subscriptions.length === 0) {
           const handleRealtimeUpdate = (payload: RealtimePostgresChangesPayload<{ [key: string]: any }>) => {
-              const { userProfile, quotaSettingsMap, initialize } = get();
-              if (!userProfile?.id || !userProfile.salary_level) {
-                  if (userProfile?.id) { initialize(userProfile.id); }
-                  return;
-              }
+              const { userProfile, initialize } = get();
+              if (!userProfile?.id) return;
+              
               const record = (payload.new || payload.old) as Partial<ProductionEntry & DailySupplementaryData>;
               if (!record || !record.date) return;
-              set(state => {
-                  const newDaysData = JSON.parse(JSON.stringify(state.processedDaysData));
-                  const dayIndex = newDaysData.findIndex((d: DailyProductionData) => d.date === record.date);
-                  
-                  if (dayIndex === -1) { return state; } // Không thay đổi state nếu không tìm thấy ngày
-                  
-                  const targetDay = newDaysData[dayIndex];
-          
-                  if (payload.table === 'entries') {
-                      const entryRecord = record as ProductionEntry;
-                      targetDay.entries = targetDay.entries.filter((e: any) => e.id !== entryRecord.id);
-                      if (payload.eventType !== 'DELETE') {
-                          const newEntry = payload.new as ProductionEntry;
-                          const quotaSetting = quotaSettingsMap.get(newEntry.product_code);
-                          let workAmount = 0;
-                          if (quotaSetting && userProfile.salary_level && newEntry.quantity != null) {
-                              const dailyQuota = getQuotaValueBySalaryLevel(quotaSetting, userProfile.salary_level);
-                              if (dailyQuota > 0) {
-                                  const percentage = newEntry.quota_percentage ?? 100;
-                                  workAmount = (newEntry.quantity / dailyQuota) / (percentage / 100);
-                              }
+
+              const currentState = get();
+              const newDaysData = JSON.parse(JSON.stringify(currentState.processedDaysData));
+              const dayIndex = newDaysData.findIndex((d: DailyProductionData) => d.date === record.date);
+              
+              if (dayIndex === -1) {
+                  initialize(userProfile.id);
+                  return;
+              }
+              
+              const targetDay = newDaysData[dayIndex];
+      
+              if (payload.table === 'entries') {
+                  const entryRecord = record as ProductionEntry;
+                  targetDay.entries = targetDay.entries.filter((e: any) => e.id !== entryRecord.id);
+                  if (payload.eventType !== 'DELETE') {
+                      const newEntry = payload.new as ProductionEntry;
+                      const quotaSetting = currentState.quotaSettingsMap.get(newEntry.product_code);
+                      let workAmount = 0;
+                      if (quotaSetting && userProfile.salary_level && newEntry.quantity != null) {
+                          const dailyQuota = getQuotaValueBySalaryLevel(quotaSetting, userProfile.salary_level);
+                          if (dailyQuota > 0) {
+                              const percentage = newEntry.quota_percentage ?? 100;
+                              workAmount = (newEntry.quantity / dailyQuota) / (percentage / 100);
                           }
-                          targetDay.entries.push({ id: newEntry.id, stageCode: newEntry.product_code, quantity: newEntry.quantity || 0, workAmount, po: newEntry.po, box: newEntry.box, batch: newEntry.batch, verified: newEntry.verified, quota_percentage: newEntry.quota_percentage });
                       }
-                      targetDay.totalWorkForDay = targetDay.entries.reduce((sum: number, e: any) => sum + (e.workAmount || 0), 0);
-                  } else if (payload.table === 'additional') {
-                      if (payload.eventType !== 'DELETE') {
-                          const newSuppData = payload.new as any;
-                          targetDay.supplementaryData = { date: newSuppData.date, leaveHours: newSuppData.leave, overtimeHours: newSuppData.overtime, meetingMinutes: newSuppData.meeting, leaveVerified: newSuppData.leave_verified, overtimeVerified: newSuppData.overtime_verified, meetingVerified: newSuppData.meeting_verified };
-                      } else {
-                          targetDay.supplementaryData = null;
-                      }
+                      targetDay.entries.push({ id: newEntry.id, stageCode: newEntry.product_code, quantity: newEntry.quantity || 0, workAmount, po: newEntry.po, box: newEntry.box, batch: newEntry.batch, verified: newEntry.verified, quota_percentage: newEntry.quota_percentage });
                   }
-                  return { processedDaysData: newDaysData };
-              });
-              // Tính toán lại thống kê sau khi cập nhật state
-              get().processAndCalculateAllData();
+                  targetDay.totalWorkForDay = targetDay.entries.reduce((sum: number, e: any) => sum + (e.workAmount || 0), 0);
+              } else if (payload.table === 'additional') {
+                  if (payload.eventType !== 'DELETE') {
+                      const newSuppData = payload.new as any;
+                      targetDay.supplementaryData = { date: newSuppData.date, leaveHours: newSuppData.leave, overtimeHours: newSuppData.overtime, meetingMinutes: newSuppData.meeting, leaveVerified: newSuppData.leave_verified, overtimeVerified: newSuppData.overtime_verified, meetingVerified: newSuppData.meeting_verified };
+                  } else {
+                      targetDay.supplementaryData = null;
+                  }
+              }
+
+              set({ processedDaysData: newDaysData });
+              get().processAndCalculateAllData(newDaysData);
           };
 
           const entriesChannel = supabase.channel(`rt-entries-user-${userId}`).on('postgres_changes', { event: '*', schema: 'public', table: 'entries', filter: `user_id=eq.${userId}`}, handleRealtimeUpdate).subscribe();
