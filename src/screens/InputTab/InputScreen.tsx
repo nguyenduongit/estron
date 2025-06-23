@@ -48,12 +48,9 @@ export default function InputScreen({ route, navigation }: Props) {
   const { date: initialDateString, entryId } = route.params;
   const isEditMode = !!entryId;
 
-  // <<< START: THAY ĐỔI TẠI ĐÂY >>>
-  // Lấy từng phần của state một cách riêng rẽ để tránh vòng lặp render
   const userSelectedQuotas = useProductionStore(state => state.userSelectedQuotas);
   const processedDaysData = useProductionStore(state => state.processedDaysData);
   const quotaSettingsMap = useProductionStore(state => state.quotaSettingsMap);
-  // <<< END: THAY ĐỔI TẠI ĐÂY >>>
 
   const activeUserId = useAuthStore(state => state.authUser?.profile.id);
 
@@ -77,6 +74,25 @@ export default function InputScreen({ route, navigation }: Props) {
   const [po, setPo] = useState<string>('');
   const [box, setBox] = useState<string>('');
   const [batch, setBatch] = useState<string>('');
+
+  // START: THAY ĐỔI TẠI ĐÂY
+  const [poKeyboardType, setPoKeyboardType] = useState<'default' | 'numeric'>('numeric');
+
+  const handlePoChange = (text: string) => {
+    if (text === '713') {
+      // Xóa chuỗi '713'
+      setPo('');
+      // Đổi keyboard thành dạng text mặc định
+      setPoKeyboardType('default');
+    } else {
+      setPo(text);
+      // Nếu người dùng xóa hết, trả lại keyboard dạng số
+      if (text === '') {
+        setPoKeyboardType('numeric');
+      }
+    }
+  };
+  // END: THAY ĐỔI TẠI ĐÂY
 
   const [isLoading, setIsLoading] = useState(false);
   const [formError, setFormError] = useState<string | null>(null);
@@ -115,7 +131,6 @@ export default function InputScreen({ route, navigation }: Props) {
           const savedPercentage = initialEntry.quota_percentage;
           setQuotaPercentage(savedPercentage ? Number(savedPercentage) : 100);
 
-          // Nếu không có số lượng đã lưu, đặt mặc định là 270. Nếu có, hiển thị số đã lưu.
           setQuantity(initialEntry.quantity?.toString() ?? '270');
           setPo(initialEntry.po ?? '');
           setBox(initialEntry.box ?? '');
@@ -284,14 +299,16 @@ export default function InputScreen({ route, navigation }: Props) {
           }
         }}
       />
+      {/* START: THAY ĐỔI TẠI ĐÂY */}
       <TextInput
         label="PO"
         value={po}
-        onChangeText={setPo}
-        keyboardType="numeric"
+        onChangeText={handlePoChange}
+        keyboardType={poKeyboardType}
         returnKeyType="next"
         placeholder="Nhập số PO"
       />
+      {/* END: THAY ĐỔI TẠI ĐÂY */}
       <TextInput
         label="Hộp"
         value={box}
