@@ -179,8 +179,8 @@ export default function StatisticsScreen() {
       <View style={styles.statsContainer}>
         {renderStatRow(`Ngày công chuẩn tháng ${estronWeekInfo?.estronMonth.estronMonth || ''}`, standardWorkdaysForMonth.toFixed(1), 'ngày')}
         {renderStatRow('Ngày công tính đến hiện tại', standardWorkdaysToCurrent.toFixed(1), 'ngày')}
-        {renderStatRow('Công sản phẩm cần thực hiện', monthlyTargetWork.toFixed(3), 'công')}
-        {renderStatRow('Công sản phẩm đã thực hiện', totalProductWorkDone.toFixed(3), 'công')}
+        {renderStatRow('Công sản phẩm cần thực hiện', monthlyTargetWork, 'công')}
+        {renderStatRow('Công sản phẩm đã thực hiện', totalProductWorkDone, 'công')}
         {renderStatRow('Số ngày nghỉ', totalLeaveDays.toFixed(1), 'ngày')}
         {renderStatRow('Số giờ tăng ca', totalOvertimeHours.toFixed(0), 'giờ')}
         {renderStatRow('Hỗ trợ', totalMeetingMinutes.toFixed(0), 'phút')}
@@ -238,7 +238,7 @@ export default function StatisticsScreen() {
                             <Text style={styles.quantityValue}>{weekStat.totalMeetingMinutesInWeek}</Text>
                             <Text style={styles.quantityUnit}>phút</Text>
                         </View>
-                        <Text style={[styles.columnText, styles.columnWork]}>{((weekStat.totalMeetingMinutesInWeek ?? 0) / 480).toFixed(2)}</Text>
+                        <Text style={[styles.columnText, styles.columnWork]}>{((weekStat.totalMeetingMinutesInWeek ?? 0) / 480).toFixed(3)}</Text>
                       </View>
                     )}
                   </>
