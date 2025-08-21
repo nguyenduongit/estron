@@ -55,7 +55,6 @@
     "readable-stream": "^4.7.0",
     "stream-http": "^3.2.0",
     "swiper": "^11.2.8",
-    "undefined": "expo-auth-session/providers/google",
     "util": "^0.12.5",
     "zustand": "^5.0.5"
   },

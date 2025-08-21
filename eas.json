@@ -6,10 +6,7 @@
   "build": {
     "development": {
       "developmentClient": true,
-      "distribution": "internal",
-      "android": {
-        "buildType": "apk"
-      }
+      "distribution": "internal"
     },
     "preview": {
       "distribution": "internal",
@@ -19,14 +16,10 @@
     },
     "production": {
       "autoIncrement": true
-    },
-    "pwa_production": { 
-      "platform": "web",
-      "env": {
-      }
+    }
   },
   "submit": {
     "production": {}
   }
 }
-}
+
