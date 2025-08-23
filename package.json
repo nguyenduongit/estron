@@ -47,7 +47,6 @@
     "react-native-screens": "~4.10.0",
     "react-native-svg": "15.11.2",
     "react-native-tcp-socket": "^6.3.0",
-    "react-native-tls": "^0.0.2",
     "react-native-url-polyfill": "^2.0.0",
     "react-native-uuid": "^2.0.3",
     "react-native-vector-icons": "^10.2.0",
