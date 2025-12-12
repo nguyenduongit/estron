@@ -1,10 +1,18 @@
 // src/screens/InputTab/InputScreen.tsx
 import React, { useState, useLayoutEffect, useEffect, useMemo } from 'react';
-import { View, Text, StyleSheet, ActivityIndicator, ScrollView } from 'react-native';
+import {
+  View,
+  Text,
+  StyleSheet,
+  ActivityIndicator,
+  ScrollView,
+  TouchableOpacity,
+} from 'react-native';
 import type { RouteProp } from '@react-navigation/native';
 import type { StackNavigationProp } from '@react-navigation/stack';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { parseISO } from 'date-fns';
+import Ionicons from '@expo/vector-icons/Ionicons';
 
 import { InputStackNavigatorParamList } from '../../navigation/types';
 import { theme } from '../../theme';
@@ -55,6 +63,9 @@ export default function InputScreen({ route, navigation }: Props) {
   const activeUserId = useAuthStore(state => state.authUser?.profile.id);
 
   const [isInitializing, setIsInitializing] = useState(true);
+
+  // State để điều khiển việc mở rộng form (PO, Box, Batch)
+  const [isExpanded, setIsExpanded] = useState(false);
 
   const initialEntry = useMemo(() => {
     if (!isEditMode || !processedDaysData) return null;
@@ -136,15 +147,21 @@ export default function InputScreen({ route, navigation }: Props) {
           setBox(initialEntry.box ?? '');
           setBatch(initialEntry.batch ?? '');
 
+          // Nếu có dữ liệu trong các trường phụ, tự động mở rộng
+          if (initialEntry.po || initialEntry.box || initialEntry.batch) {
+            setIsExpanded(true);
+          }
+
           setIsInitializing(false);
         }
       } else {
         setSelectedDate(initialDateString ? parseISO(initialDateString) : new Date());
         setQuotaPercentage(100);
-        setQuantity('270');
+        setQuantity('0');
         setPo('');
         setBox('');
         setBatch('');
+        setIsExpanded(false); // Mặc định thu gọn khi thêm mới
 
         const lastUsedCode = await AsyncStorage.getItem(LAST_PRODUCT_KEY);
         if (lastUsedCode && userSelectedQuotas.some(q => q.product_code === lastUsedCode)) {
@@ -273,6 +290,7 @@ export default function InputScreen({ route, navigation }: Props) {
       keyboardShouldPersistTaps="handled"
       contentContainerStyle={{ paddingBottom: 60 }}
     >
+      {/* 1. Mã công đoạn */}
       <ThemedPicker
         label="Mã công đoạn"
         selectedValue={selectedProductCode}
@@ -281,6 +299,7 @@ export default function InputScreen({ route, navigation }: Props) {
         enabled={!isEditMode && userSelectedQuotas.length > 0}
       />
 
+      {/* 2. Số lượng */}
       <TextInput
         label="Số lượng"
         value={quantity}
@@ -299,40 +318,60 @@ export default function InputScreen({ route, navigation }: Props) {
           }
         }}
       />
-      {/* START: THAY ĐỔI TẠI ĐÂY */}
-      <TextInput
-        label="PO"
-        value={po}
-        onChangeText={handlePoChange}
-        keyboardType={poKeyboardType}
-        returnKeyType="next"
-        placeholder="Nhập số PO"
-      />
-      {/* END: THAY ĐỔI TẠI ĐÂY */}
-      <TextInput
-        label="Hộp"
-        value={box}
-        onChangeText={setBox}
-        keyboardType="numeric"
-        returnKeyType="next"
-        placeholder="Nhập mã hộp"
-      />
-      <TextInput
-        label="Batch"
-        value={batch}
-        onChangeText={setBatch}
-        keyboardType="numeric"
-        placeholder="Nhập số batch"
-        returnKeyType="done"
-        onSubmitEditing={handleSave}
-      />
 
+      {/* 3. Phần trăm định mức (Di chuyển lên đây) */}
       <ThemedPicker
         label="Phần trăm định mức"
         selectedValue={quotaPercentage}
         onValueChange={itemValue => setQuotaPercentage(itemValue as number)}
         items={QUOTA_PERCENTAGE_OPTIONS}
       />
+
+      {/* Nút bấm mở rộng 3 trường còn lại */}
+      <TouchableOpacity
+        style={styles.expandHeader}
+        onPress={() => setIsExpanded(!isExpanded)}
+        activeOpacity={0.7}
+      >
+        <Text style={styles.expandHeaderText}>Thông tin bổ sung (PO, Hộp, Batch)</Text>
+        <Ionicons
+          name={isExpanded ? 'chevron-up' : 'chevron-down'}
+          size={20}
+          color={theme.colors.textSecondary}
+        />
+      </TouchableOpacity>
+
+      {/* Khu vực Collapsible */}
+      {isExpanded && (
+        <View style={styles.collapsedContent}>
+          <TextInput
+            label="PO"
+            value={po}
+            onChangeText={handlePoChange}
+            keyboardType={poKeyboardType}
+            returnKeyType="next"
+            placeholder="Nhập số PO"
+          />
+          <TextInput
+            label="Hộp"
+            value={box}
+            onChangeText={setBox}
+            keyboardType="numeric"
+            returnKeyType="next"
+            placeholder="Nhập mã hộp"
+          />
+          <TextInput
+            label="Batch"
+            value={batch}
+            onChangeText={setBatch}
+            keyboardType="numeric"
+            placeholder="Nhập số batch"
+            returnKeyType="done"
+            onSubmitEditing={handleSave}
+          />
+        </View>
+      )}
+
       {formError && <Text style={styles.errorText}>{formError}</Text>}
 
       {isLoading ? (
@@ -390,4 +429,22 @@ const styles = StyleSheet.create({
   },
   button: { flex: 1 },
   loader: { marginTop: theme.spacing['level-7'] },
+  // Styles mới thêm
+  expandHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingVertical: theme.spacing['level-3'],
+    marginTop: theme.spacing['level-2'],
+    borderBottomWidth: 1,
+    borderBottomColor: theme.colors.borderColor,
+  },
+  expandHeaderText: {
+    fontSize: theme.typography.fontSize['level-3'],
+    color: theme.colors.textSecondary,
+    fontWeight: '500',
+  },
+  collapsedContent: {
+    marginTop: theme.spacing['level-2'],
+  },
 });
