@@ -1,5 +1,5 @@
 // src/screens/StatisticsTab/StatisticsScreen.tsx
-import React, { useCallback, useLayoutEffect } from 'react';
+import React, { useCallback, useLayoutEffect, useMemo } from 'react';
 import {
   View,
   Text,
@@ -16,17 +16,14 @@ import { addDays } from 'date-fns';
 
 import { BottomTabNavigatorParamList } from '../../navigation/types';
 import { theme } from '../../theme';
-import {
-  formatDate,
-  getToday,
-  getEstronMonthPeriod, // <<< THAY ĐỔI: IMPORT THÊM
-} from '../../utils/dateUtils';
+import { formatDate, getToday, getEstronMonthPeriod } from '../../utils/dateUtils';
 import Button from '../../components/common/Button';
+import ThemedPicker from '../../components/common/Picker';
 import { useAuthStore } from '../../stores/authStore';
-import { 
-  useProductionStore, 
-  WeeklyStatistics, 
-  WeeklyProductStat 
+import {
+  useProductionStore,
+  WeeklyStatistics,
+  WeeklyProductStat,
 } from '../../stores/productionStore';
 
 if (Platform.OS === 'web') {
@@ -52,10 +49,118 @@ type StatisticsScreenNavigationProp = BottomTabNavigationProp<
   'StatisticsTab'
 >;
 
+const PCS_PER_BOX = 270;
+const SPECIAL_BOX_PRODUCTS = ['5.1', '5.2', '5.3'];
+
+// =======================================================
+// NEW COMPONENT: MonthlyTargetSuggestionCard
+// =======================================================
+const MonthlyTargetSuggestionCard = () => {
+  const statistics = useProductionStore(state => state.statistics);
+  // SỬA LỖI 1: Lấy estronWeekInfo trực tiếp từ store thay vì từ statistics
+  const estronWeekInfo = useProductionStore(state => state.estronWeekInfo);
+  const selectedTargetProductCode = useProductionStore(state => state.selectedTargetProductCode);
+  const setSelectedTargetProductCode = useProductionStore(
+    state => state.setSelectedTargetProductCode
+  );
+
+  const targetWork = statistics?.totalWorkTargetRemaining ?? 0;
+  const products = statistics?.productsForQuota ?? [];
+
+  const selectedProduct = useMemo(() => {
+    return products.find(p => p.product_code === selectedTargetProductCode);
+  }, [selectedTargetProductCode, products]);
+
+  // Hàm tính toán và hiển thị gợi ý
+  const suggestionText = useMemo(() => {
+    if (targetWork <= 0) {
+      return {
+        main: 'Đã hoàn thành mục tiêu tháng!',
+        sub: '',
+        color: theme.colors.success,
+      };
+    }
+
+    const workAmount = targetWork.toFixed(3);
+    let mainText = `Cần làm: ${workAmount} công`;
+    let subText = '';
+
+    if (!selectedProduct) {
+      subText = 'Vui lòng chọn Mã công đoạn chính.';
+      return { main: mainText, sub: subText, color: theme.colors.primary };
+    }
+
+    const quota = selectedProduct.quota;
+
+    if (quota <= 0) {
+      subText = 'Định mức chưa được thiết lập (hoặc bằng 0).';
+      return { main: mainText, sub: subText, color: theme.colors.danger };
+    }
+
+    const totalPcsGoal = targetWork * quota;
+
+    if (selectedTargetProductCode && SPECIAL_BOX_PRODUCTS.includes(selectedTargetProductCode)) {
+      const boxes = Math.floor(totalPcsGoal / PCS_PER_BOX);
+      const remainingPcs = Math.round(totalPcsGoal - boxes * PCS_PER_BOX);
+
+      mainText = `Khoảng ${boxes} Hộp và ${remainingPcs} pcs lẻ`;
+      subText = `(Tổng: ${totalPcsGoal.toFixed(0)} pcs)`;
+    } else {
+      mainText = `Khoảng ${totalPcsGoal.toFixed(0)} pcs`;
+      subText = `(Với định mức: ${quota} pcs/công)`;
+    }
+
+    return {
+      main: mainText,
+      sub: subText,
+      color: theme.colors.primary,
+    };
+  }, [targetWork, selectedProduct, selectedTargetProductCode]);
+
+  const pickerItems = products.map(p => ({
+    label: `${p.product_code} (${p.product_name || 'N/A'}) - Đ.M: ${p.quota}`,
+    value: p.product_code,
+  }));
+
+  return (
+    <View style={styles.suggestionCard}>
+      <Text style={styles.cardTitle}>Gợi Ý Mục Tiêu Còn Lại</Text>
+      {/* SỬA LỖI 1: Sử dụng biến estronWeekInfo đã lấy từ store */}
+      <Text style={styles.dateRangeText}>
+        (Đến hết {formatDate(estronWeekInfo?.estronMonth?.endDate ?? new Date(), 'dd/MM/yyyy')})
+      </Text>
+
+      {/* Selector */}
+      <ThemedPicker
+        label="Chọn công đoạn chính đang thực hiện"
+        // SỬA LỖI 2: Thêm fallback '' nếu selectedTargetProductCode là null
+        selectedValue={selectedTargetProductCode || ''}
+        onValueChange={itemValue => setSelectedTargetProductCode(itemValue as string)}
+        items={pickerItems}
+      />
+
+      {/* Suggestion Text */}
+      <View style={styles.suggestionContainer}>
+        <Text style={[styles.suggestionMainText, { color: suggestionText.color }]}>
+          {suggestionText.main}
+        </Text>
+        {suggestionText.sub ? (
+          <Text style={styles.suggestionSubText}>{suggestionText.sub}</Text>
+        ) : null}
+
+        {targetWork > 0 && (
+          <Text style={styles.targetWorkText}>Tổng công cần làm: {targetWork.toFixed(3)} công</Text>
+        )}
+      </View>
+    </View>
+  );
+};
+// =======================================================
+
 export default function StatisticsScreen() {
   const navigation = useNavigation<StatisticsScreenNavigationProp>();
   const activeUserId = useAuthStore(state => state.authUser?.profile.id);
-  
+
   const isLoading = useProductionStore(state => state.isLoading);
   const error = useProductionStore(state => state.error);
   const statistics = useProductionStore(state => state.statistics);
@@ -83,10 +188,8 @@ export default function StatisticsScreen() {
   }, [setTargetDate]);
 
   useLayoutEffect(() => {
-    // <<< START: LOGIC SỬA LỖI >>>
     const currentEstronMonth = getEstronMonthPeriod(getToday());
     const isViewingPreviousMonth = estronWeekInfo?.estronMonth.name !== currentEstronMonth.name;
-    // <<< END: LOGIC SỬA LỖI >>>
 
     navigation.setOptions({
       title: estronWeekInfo
@@ -95,16 +198,20 @@ export default function StatisticsScreen() {
       headerLeft: () => (
         <TouchableOpacity
           onPress={handleNavigateToPreviousMonth}
-          disabled={isViewingPreviousMonth} // Vô hiệu hóa khi đang ở tháng trước
+          disabled={isViewingPreviousMonth}
           style={{ marginLeft: Platform.OS === 'ios' ? 10 : 20, padding: 5 }}
         >
-          <Ionicons name={'caret-back'} size={26} color={isViewingPreviousMonth ? theme.colors.grey : theme.colors.textOnPrimary} />
+          <Ionicons
+            name={'caret-back'}
+            size={26}
+            color={isViewingPreviousMonth ? theme.colors.grey : theme.colors.textOnPrimary}
+          />
         </TouchableOpacity>
       ),
       headerRight: () => (
         <TouchableOpacity
           onPress={handleNavigateToCurrentMonth}
-          disabled={!isViewingPreviousMonth} // Vô hiệu hóa khi đang ở tháng hiện tại
+          disabled={!isViewingPreviousMonth}
           style={{ marginRight: Platform.OS === 'ios' ? 10 : 20, padding: 5 }}
         >
           <Ionicons
@@ -121,7 +228,9 @@ export default function StatisticsScreen() {
     <View style={styles.statsRow}>
       <Text style={styles.statsLabel}>{label}</Text>
       <View style={styles.statsValueContainer}>
-        <Text style={styles.statsValue}>{typeof value === 'number' ? value.toFixed(2) : value}</Text>
+        <Text style={styles.statsValue}>
+          {typeof value === 'number' ? value.toFixed(2) : value}
+        </Text>
         {unit && <Text style={styles.statsUnit}>{unit}</Text>}
       </View>
     </View>
@@ -177,24 +286,38 @@ export default function StatisticsScreen() {
       contentContainerStyle={styles.contentContainer}
     >
       <View style={styles.statsContainer}>
-        {renderStatRow(`Ngày công chuẩn tháng ${estronWeekInfo?.estronMonth.estronMonth || ''}`, standardWorkdaysForMonth.toFixed(1), 'ngày')}
+        {renderStatRow(
+          `Ngày công chuẩn tháng ${estronWeekInfo?.estronMonth.estronMonth || ''}`,
+          standardWorkdaysForMonth.toFixed(1),
+          'ngày'
+        )}
         {renderStatRow('Ngày công tính đến hiện tại', standardWorkdaysToCurrent.toFixed(1), 'ngày')}
         {renderStatRow('Công sản phẩm cần thực hiện', monthlyTargetWork, 'công')}
         {renderStatRow('Công sản phẩm đã thực hiện', totalProductWorkDone, 'công')}
         {renderStatRow('Số ngày nghỉ', totalLeaveDays.toFixed(1), 'ngày')}
         {renderStatRow('Số giờ tăng ca', totalOvertimeHours.toFixed(0), 'giờ')}
         {renderStatRow('Hỗ trợ', totalMeetingMinutes.toFixed(0), 'phút')}
-        
+
         <View style={styles.footerContainer}>
           {(() => {
             const diff = totalProductWorkDone - monthlyTargetWork;
             if (diff >= 0) {
-              return <Text style={[styles.footerText, styles.footerTextSuccess]}>Bạn đang dư {diff.toFixed(3)} công</Text>;
+              return (
+                <Text style={[styles.footerText, styles.footerTextSuccess]}>
+                  Bạn đang dư {diff.toFixed(3)} công
+                </Text>
+              );
             }
-            return <Text style={[styles.footerText, styles.footerTextDanger]}>Bạn đang thiếu {Math.abs(diff).toFixed(3)} công</Text>;
+            return (
+              <Text style={[styles.footerText, styles.footerTextDanger]}>
+                Bạn đang thiếu {Math.abs(diff).toFixed(3)} công
+              </Text>
+            );
           })()}
         </View>
       </View>
+
+      {statistics && <MonthlyTargetSuggestionCard />}
 
       <View style={styles.weeklyStatsSection}>
         <Text style={styles.sectionTitle}>THỐNG KÊ TUẦN</Text>
@@ -219,26 +342,47 @@ export default function StatisticsScreen() {
               </View>
 
               <View style={styles.weekCardBody}>
-                {(weekStat.productStats && weekStat.productStats.length > 0) || (weekStat.totalMeetingMinutesInWeek ?? 0) > 0 ? (
+                {(weekStat.productStats && weekStat.productStats.length > 0) ||
+                (weekStat.totalMeetingMinutesInWeek ?? 0) > 0 ? (
                   <>
                     {weekStat.productStats?.map((prodStat: WeeklyProductStat, index: number) => (
-                      <View key={prodStat.product_code} style={[styles.productStatRow, index !== 0 && styles.rowBorderTop]}>
-                        <Text style={[styles.columnText, styles.columnCode]}>{prodStat.product_code}</Text>
+                      <View
+                        key={prodStat.product_code}
+                        style={[styles.productStatRow, index !== 0 && styles.rowBorderTop]}
+                      >
+                        <Text style={[styles.columnText, styles.columnCode]}>
+                          {prodStat.product_code}
+                        </Text>
                         <View style={styles.columnQuantityContainer}>
-                            <Text style={styles.quantityValue}>{prodStat.total_quantity.toLocaleString()}</Text>
-                            <Text style={styles.quantityUnit}>pcs</Text>
+                          <Text style={styles.quantityValue}>
+                            {prodStat.total_quantity.toLocaleString()}
+                          </Text>
+                          <Text style={styles.quantityUnit}>pcs</Text>
                         </View>
-                        <Text style={[styles.columnText, styles.columnWork]}>{prodStat.total_work_done.toFixed(3)}</Text>
+                        <Text style={[styles.columnText, styles.columnWork]}>
+                          {prodStat.total_work_done.toFixed(3)}
+                        </Text>
                       </View>
                     ))}
                     {(weekStat.totalMeetingMinutesInWeek ?? 0) > 0 && (
-                      <View style={[styles.productStatRow, (weekStat.productStats && weekStat.productStats.length > 0) && styles.rowBorderTop]}>
+                      <View
+                        style={[
+                          styles.productStatRow,
+                          weekStat.productStats &&
+                            weekStat.productStats.length > 0 &&
+                            styles.rowBorderTop,
+                        ]}
+                      >
                         <Text style={[styles.columnText, styles.columnCode]}>Hỗ trợ</Text>
                         <View style={styles.columnQuantityContainer}>
-                            <Text style={styles.quantityValue}>{weekStat.totalMeetingMinutesInWeek}</Text>
-                            <Text style={styles.quantityUnit}>phút</Text>
+                          <Text style={styles.quantityValue}>
+                            {weekStat.totalMeetingMinutesInWeek}
+                          </Text>
+                          <Text style={styles.quantityUnit}>phút</Text>
                         </View>
-                        <Text style={[styles.columnText, styles.columnWork]}>{((weekStat.totalMeetingMinutesInWeek ?? 0) / 480).toFixed(3)}</Text>
+                        <Text style={[styles.columnText, styles.columnWork]}>
+                          {((weekStat.totalMeetingMinutesInWeek ?? 0) / 480).toFixed(3)}
+                        </Text>
                       </View>
                     )}
                   </>
@@ -249,7 +393,12 @@ export default function StatisticsScreen() {
 
               <View style={styles.weekCardFooter}>
                 <Text style={styles.weekCardTotalWorkLabel}>Tổng công tuần</Text>
-                <Text style={[styles.weekCardTotalWorkValue, { color: isTargetMet ? theme.colors.success : theme.colors.danger }]}>
+                <Text
+                  style={[
+                    styles.weekCardTotalWorkValue,
+                    { color: isTargetMet ? theme.colors.success : theme.colors.danger },
+                  ]}
+                >
                   {totalWorkInWeek.toFixed(3)}
                 </Text>
               </View>
@@ -261,7 +410,6 @@ export default function StatisticsScreen() {
   );
 }
 
-// ... styles không thay đổi ...
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: theme.colors.background1 },
   contentContainer: { flexGrow: 1, paddingBottom: theme.spacing['level-7'] },
@@ -297,7 +445,6 @@ const styles = StyleSheet.create({
     flex: 2,
     fontSize: theme.typography.fontSize['level-3'],
     color: theme.colors.textSecondary,
-    // marginBottom: theme.spacing['level-2'],
   },
   statsValueContainer: {
     flex: 1,
@@ -306,7 +453,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   statsValue: {
-    flex:1,
+    flex: 1,
     fontSize: theme.typography.fontSize['level-4'],
     color: theme.colors.success,
     fontWeight: theme.typography.fontWeight['bold'],
@@ -341,14 +488,14 @@ const styles = StyleSheet.create({
     fontWeight: theme.typography.fontWeight['bold'],
     color: theme.colors.text,
     marginBottom: theme.spacing['level-4'],
-    textAlign: 'center'
+    textAlign: 'center',
   },
-   weekCard: {
+  weekCard: {
     backgroundColor: theme.colors.background2,
     borderRadius: theme.borderRadius['level-4'],
     marginBottom: theme.spacing['level-4'],
     ...theme.shadow.md,
-    overflow: 'hidden', // << Thêm dòng này
+    overflow: 'hidden',
   },
   weekCardTop: {
     flexDirection: 'row',
@@ -358,7 +505,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: theme.spacing['level-4'],
     borderBottomWidth: 1,
     borderBottomColor: theme.colors.borderColor,
-    backgroundColor: theme.colors.background3, // << Thêm dòng này
+    backgroundColor: theme.colors.background3,
   },
   weekCardTitle: {
     flexShrink: 1,
@@ -372,7 +519,7 @@ const styles = StyleSheet.create({
     fontWeight: 'normal',
     color: theme.colors.textSecondary,
     fontSize: theme.typography.fontSize['level-3'],
-
+    textAlign: 'center',
   },
   targetContainer: {
     flexDirection: 'row',
@@ -380,7 +527,7 @@ const styles = StyleSheet.create({
   },
   targetLabel: {
     fontSize: theme.typography.fontSize['level-3'],
-    fontStyle:theme.typography.fontStyle['italic'],
+    fontStyle: theme.typography.fontStyle['italic'],
     color: theme.colors.textSecondary,
   },
   targetValue: {
@@ -441,11 +588,11 @@ const styles = StyleSheet.create({
     textAlign: 'right',
     fontWeight: 'bold',
   },
-   weekCardFooter: {
+  weekCardFooter: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    backgroundColor: theme.colors.background3, // << Thay đổi ở đây
+    backgroundColor: theme.colors.background3,
     paddingVertical: theme.spacing['level-3'],
     paddingHorizontal: theme.spacing['level-4'],
     borderTopWidth: 1,
@@ -459,5 +606,48 @@ const styles = StyleSheet.create({
   weekCardTotalWorkValue: {
     fontSize: theme.typography.fontSize['level-4'],
     fontWeight: 'bold',
+  },
+  // >>> Styles mới cho Suggestion Card <<<
+  suggestionCard: {
+    backgroundColor: theme.colors.background2,
+    borderRadius: theme.borderRadius['level-4'],
+    marginVertical: theme.spacing['level-4'],
+    marginHorizontal: theme.spacing['level-3'],
+    padding: theme.spacing['level-4'],
+    ...theme.shadow.md,
+    gap: theme.spacing['level-2'],
+  },
+  cardTitle: {
+    fontSize: theme.typography.fontSize['level-4'],
+    fontWeight: 'bold',
+    color: theme.colors.text,
+    marginBottom: theme.spacing['level-1'],
+    textAlign: 'center',
+  },
+  suggestionContainer: {
+    padding: theme.spacing['level-3'],
+    backgroundColor: theme.colors.background3,
+    borderRadius: theme.borderRadius['level-2'],
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: theme.colors.borderColor,
+  },
+  suggestionMainText: {
+    fontSize: theme.typography.fontSize['level-4'],
+    fontWeight: 'bold',
+    marginBottom: theme.spacing['level-1'],
+    textAlign: 'center',
+  },
+  suggestionSubText: {
+    fontSize: theme.typography.fontSize['level-3'],
+    color: theme.colors.textSecondary,
+    fontStyle: 'italic',
+    textAlign: 'center',
+  },
+  targetWorkText: {
+    fontSize: theme.typography.fontSize['level-3'],
+    color: theme.colors.textSecondary,
+    marginTop: theme.spacing['level-2'],
+    fontWeight: '500',
   },
 });
