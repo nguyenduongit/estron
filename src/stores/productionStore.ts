@@ -33,7 +33,8 @@ import {
   EstronWeekPeriod,
   startOfDay,
   endOfDay,
-  isWithinInterval
+  isWithinInterval,
+  addDays // <<< Import thêm addDays
 } from '../utils/dateUtils';
 
 
@@ -62,6 +63,12 @@ export interface StatisticsData {
   totalLeaveDays: number;
   totalMeetingMinutes: number;
   weeklyStatistics: WeeklyStatistics[];
+  
+  // <<< Các trường mới cho mục tiêu còn lại >>>
+  workDeficit: number; // monthlyTargetWork - totalProductWorkDone (> 0 là thiếu, < 0 là dư)
+  standardWorkdaysRemaining: number; // Ngày công chuẩn còn lại trong tháng
+  totalWorkTargetRemaining: number; // Tổng công sản phẩm cần thực hiện từ giờ đến cuối tháng
+  productsForQuota: { product_code: string; product_name: string; quota: number; }[]; // Danh sách sản phẩm kèm định mức
 }
 
 export interface ProductState {
@@ -75,6 +82,9 @@ export interface ProductState {
   error: string | null;
   subscriptions: RealtimeChannel[];
   statistics: StatisticsData | null;
+  
+  // <<< State lưu mã sản phẩm được chọn để tính gợi ý >>>
+  selectedTargetProductCode: string | null; 
 }
 
 export interface ProductActions {
@@ -82,6 +92,8 @@ export interface ProductActions {
   initialize: (userId: string) => void;
   cleanup: () => void;
   processAndCalculateAllData: (dataForCalculation: DailyProductionData[]) => void;
+  // <<< Action cập nhật mã sản phẩm được chọn >>>
+  setSelectedTargetProductCode: (code: string) => void;
 }
 
 export const useProductionStore = create<ProductState & ProductActions>((set, get) => ({
@@ -95,6 +107,7 @@ export const useProductionStore = create<ProductState & ProductActions>((set, ge
   error: null,
   subscriptions: [],
   statistics: null,
+  selectedTargetProductCode: null, // Khởi tạo giá trị null
 
   setTargetDate: (date) => {
     const currentInfo = get().estronWeekInfo;
@@ -108,6 +121,11 @@ export const useProductionStore = create<ProductState & ProductActions>((set, ge
     } else {
       set({ targetDate: date });
     }
+  },
+  
+  // Action mới
+  setSelectedTargetProductCode: (code) => {
+    set({ selectedTargetProductCode: code });
   },
 
   processAndCalculateAllData: (dataForCalculation: DailyProductionData[]) => {
@@ -135,6 +153,58 @@ export const useProductionStore = create<ProductState & ProductActions>((set, ge
     
     const monthlyTargetWork = standardWorkdaysToCurrent - (totalLeaveHours / 8.0) - (totalMeetingMinutes / 480.0) + (totalOvertimeHours / 8.0);
 
+    // <<< TÍNH TOÁN CÔNG CẦN THỰC HIỆN CÒN LẠI >>>
+    // 1. Tính công thiếu/dư (Dương là thiếu, Âm là dư)
+    const workDeficit = monthlyTargetWork - totalProductWorkDone; 
+    
+    // 2. Tính ngày công chuẩn còn lại (từ ngày mai đến cuối tháng)
+    const tomorrow = startOfDay(addDays(today, 1));
+    const isTodayLastDayOfMonth = isAfter(tomorrow, monthInfo.endDate);
+    
+    let standardWorkdaysRemaining = 0;
+    let remainingLeaveHours = 0;
+    let remainingOvertimeHours = 0;
+    let remainingMeetingMinutes = 0;
+    
+    if (!isTodayLastDayOfMonth) {
+        standardWorkdaysRemaining = calculateStandardWorkdays(tomorrow, monthInfo.endDate);
+        
+        // Lấy các ngày nghỉ/tăng ca đã nhập trước cho tương lai
+        const remainingDaysSuppData = processedDaysData
+          .filter(dayData => {
+            const dDate = parseISO(dayData.date);
+            return isWithinInterval(dDate, { start: tomorrow, end: monthInfo.endDate });
+          })
+          .map(d => d.supplementaryData)
+          .filter(Boolean) as DailySupplementaryData[];
+          
+        remainingLeaveHours = remainingDaysSuppData.reduce((sum, d) => sum + (d.leaveHours || 0), 0);
+        remainingOvertimeHours = remainingDaysSuppData.reduce((sum, d) => sum + (d.overtimeHours || 0), 0);
+        remainingMeetingMinutes = remainingDaysSuppData.reduce((sum, d) => sum + (d.meetingMinutes || 0), 0);
+    }
+    
+    // 3. Tính công chuẩn tương lai thực tế (trừ nghỉ, cộng tăng ca tương lai)
+    const workdayTargetRemaining = 
+        standardWorkdaysRemaining - 
+        (remainingLeaveHours / 8.0) - 
+        (remainingMeetingMinutes / 480.0) + 
+        (remainingOvertimeHours / 8.0);
+        
+    // 4. Tổng công cần làm = Việc tương lai + Nợ cũ (nếu nợ cũ âm thì tự trừ bớt)
+    const totalWorkTargetRemainingRaw = workdayTargetRemaining + workDeficit;
+    const totalWorkTargetRemaining = Math.max(0, totalWorkTargetRemainingRaw); 
+    
+    // 5. Chuẩn bị danh sách sản phẩm và định mức để UI sử dụng
+    const productsForQuota = get().userSelectedQuotas.map(usq => {
+        const setting = get().quotaSettingsMap.get(usq.product_code);
+        const quota = setting && userProfile?.salary_level ? getQuotaValueBySalaryLevel(setting, userProfile.salary_level) : 0;
+        return { 
+          product_code: usq.product_code, 
+          product_name: setting?.product_name || usq.product_code, 
+          quota 
+        };
+    });
+
     const allWeeksInMonth = getEstronWeeks(monthInfo);
 
     const weeklyStatistics = allWeeksInMonth
@@ -159,13 +229,9 @@ export const useProductionStore = create<ProductState & ProductActions>((set, ge
             const weekSuppData = daysInWeek.map(d => d.supplementaryData).filter(Boolean) as DailySupplementaryData[];
             const totalMeetingMinutesInWeek = weekSuppData.reduce((sum, d) => sum + (d.meetingMinutes || 0), 0);
             
-            // =========================================================================
-            // <<< START: SỬA LỖI TÍNH TỔNG CÔNG TUẦN >>>
             const totalProductWorkInWeek = daysInWeek.reduce((sum, day) => sum + (day.totalWorkForDay || 0), 0);
             const meetingWorkInWeek = totalMeetingMinutesInWeek / 480.0;
             const totalWorkInWeek = totalProductWorkInWeek + meetingWorkInWeek;
-            // <<< END: SỬA LỖI TÍNH TỔNG CÔNG TUẦN >>>
-            // =========================================================================
 
             const productStatsMap = new Map<string, WeeklyProductStat>();
             daysInWeek.flatMap(d => d.entries).forEach(entry => {
@@ -190,6 +256,10 @@ export const useProductionStore = create<ProductState & ProductActions>((set, ge
         standardWorkdaysForMonth, standardWorkdaysToCurrent, totalProductWorkDone,
         monthlyTargetWork, totalOvertimeHours, totalLeaveDays, totalMeetingMinutes,
         weeklyStatistics,
+        workDeficit, 
+        standardWorkdaysRemaining,
+        totalWorkTargetRemaining,
+        productsForQuota,
       },
     });
   },
@@ -212,6 +282,15 @@ export const useProductionStore = create<ProductState & ProductActions>((set, ge
         }
         const profileData = profileRes.data;
         const selectedQuotasData = quotasRes.data || [];
+        
+        // <<< THIẾT LẬP MẶC ĐỊNH MÃ SẢN PHẨM MỤC TIÊU NẾU CHƯA CÓ >>>
+        const firstProductCode = selectedQuotasData.length > 0 ? selectedQuotasData[0].product_code : null;
+        const currentSelectedTargetCode = get().selectedTargetProductCode;
+        // Nếu chưa chọn hoặc mã đã chọn không còn trong danh sách -> Reset về mã đầu tiên
+        if (!currentSelectedTargetCode || !selectedQuotasData.some(q => q.product_code === currentSelectedTargetCode)) {
+            set({ selectedTargetProductCode: firstProductCode });
+        }
+
         const productionEntriesFromSupabase = productionRes.data || [];
         const supplementaryDataForMonth = supplementaryRes.data || [];
         const supplementaryDataMap = new Map<string, DailySupplementaryData>();
