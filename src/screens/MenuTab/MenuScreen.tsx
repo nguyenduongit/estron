@@ -90,7 +90,7 @@ export default function MenuScreen() {
 
       {/* --- PHẦN THÔNG TIN TÁC GIẢ MỚI THÊM --- */}
       <View style={styles.authorSection}>
-        <Text style={styles.authorLabel}>Phát triển bởi</Text>
+        <Text style={styles.authorLabel}>Ứng dụng được lập trình và phát triển bởi</Text>
         <Text style={styles.authorName}>Nguyễn Quốc Dương - P713</Text>
       </View>
     </ScrollView>
