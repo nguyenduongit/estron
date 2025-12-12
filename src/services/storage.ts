@@ -5,6 +5,7 @@ import {
     UserSelectedQuota,
     QuotaSetting,
     Profile,
+    QuotaEditHistory,
 } from '../types/data';
 import 'react-native-get-random-values';
 import { supabase } from './supabase';
@@ -330,26 +331,77 @@ export const updateProductionEntryById = async (
     }
 };
 
-// export const getStatisticsRPC = async (
-//     userId: string,
-//     date: Date
-// ): Promise<{ data: any | null; error: Error | null }> => {
-//     if (!userId) return { data: null, error: createError("userId không hợp lệ.") };
-//     try {
-//         const dateString = formatToYYYYMMDD(date);
-//         const { data, error: supaError } = await supabase.rpc('get_user_monthly_stats', {
-//             user_id_param: userId,
-//             today_param: dateString
-//         });
+/**
+ * Cập nhật định mức và lưu lịch sử
+ */
+export const updateQuotaSettingWithHistory = async (
+  userId: string,
+  productCode: string,
+  newData: Partial<QuotaSetting>
+) => {
+  try {
+    // 1. Lấy dữ liệu cũ để lưu history
+    const { data: oldData, error: fetchError } = await supabase
+      .from('quota_settings')
+      .select('*')
+      .eq('product_code', productCode)
+      .single();
 
-//         if (supaError) throw createError(`Không thể lấy dữ liệu thống kê từ máy chủ: ${supaError.message}`, supaError);
-//         return { data, error: null };
-//     } catch (e: any) {
-//         return { data: null, error: e };
-//     }
-// };
+    if (fetchError) throw fetchError;
+
+    // 2. Cập nhật bảng chính
+    const { data: updatedData, error: updateError } = await supabase
+      .from('quota_settings')
+      .update(newData)
+      .eq('product_code', productCode)
+      .select()
+      .single();
+
+    if (updateError) throw updateError;
+
+    // 3. Ghi vào bảng lịch sử
+    const { error: historyError } = await supabase
+      .from('quota_edit_history')
+      .insert({
+        product_code: productCode,
+        user_id: userId,
+        old_data: oldData,
+        new_data: updatedData,
+      });
+
+    if (historyError) {
+      console.warn("Lỗi khi lưu lịch sử sửa đổi (nhưng dữ liệu chính đã được cập nhật):", historyError);
+    }
+
+    return { data: updatedData, error: null };
+  } catch (error: any) {
+    return { data: null, error };
+  }
+};
 
 export const clearAllLocalData = async () => {
     // This function is intended for local data sources like AsyncStorage, which are not used for primary data storage in this app.
     console.log('clearAllLocalData: No specific local data to clear.');
+};
+
+// --- MỚI THÊM: Hàm cập nhật bậc lương ---
+export const updateSalaryLevel = async (
+  userId: string,
+  newLevel: string
+): Promise<{ data: boolean; error: Error | null }> => {
+  if (!userId) return { data: false, error: new Error('UserId không hợp lệ.') };
+
+  try {
+    const { error: supaError } = await supabase
+      .from('profiles')
+      .update({ salary_level: newLevel })
+      .eq('id', userId);
+
+    if (supaError) throw supaError;
+
+    return { data: true, error: null };
+  } catch (e: any) {
+    console.error('Lỗi khi cập nhật bậc lương:', e);
+    return { data: false, error: e };
+  }
 };
