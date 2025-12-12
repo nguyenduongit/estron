@@ -50,7 +50,7 @@ type StatisticsScreenNavigationProp = BottomTabNavigationProp<
 >;
 
 const PCS_PER_BOX = 270;
-const SPECIAL_BOX_PRODUCTS = ['5.1', '5.2', '5.3'];
+const SPECIAL_BOX_PRODUCTS = ['4.3', '4.4', '5.1', '5.2', '5.3'];
 
 // =======================================================
 // NEW COMPONENT: MonthlyTargetSuggestionCard
