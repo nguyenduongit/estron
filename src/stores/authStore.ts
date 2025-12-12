@@ -15,6 +15,8 @@ interface AuthState {
   // Actions
   setAuthUser: (user: AuthUser | null) => void;
   signOut: () => Promise<void>;
+  // [NEW] Action cập nhật bậc lương
+  updateProfileSalary: (newSalary: string) => void;
 }
 
 /**
@@ -37,5 +39,20 @@ export const useAuthStore = create<AuthState>((set) => ({
         console.error("Sign out error", error);
     }
     set({ authUser: null }); // Clear state
+  },
+
+  // [NEW] Implementation cập nhật bậc lương trong state
+  updateProfileSalary: (newSalary: string) => {
+    set((state) => ({
+      authUser: state.authUser
+        ? {
+            ...state.authUser,
+            profile: {
+              ...state.authUser.profile,
+              salary_level: newSalary,
+            },
+          }
+        : null,
+    }));
   },
 }));
