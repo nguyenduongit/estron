@@ -11,7 +11,17 @@ import Button from '../../components/common/Button';
 
 type MenuScreenNavigationProp = StackNavigationProp<MenuStackNavigatorParamList, 'Menu'>;
 
-const MenuItem = ({ label, screen, icon, navigation }: { label: string, screen: keyof MenuStackNavigatorParamList, icon: React.ComponentProps<typeof Ionicons>['name'], navigation: MenuScreenNavigationProp }) => (
+const MenuItem = ({
+  label,
+  screen,
+  icon,
+  navigation,
+}: {
+  label: string;
+  screen: keyof MenuStackNavigatorParamList;
+  icon: React.ComponentProps<typeof Ionicons>['name'];
+  navigation: MenuScreenNavigationProp;
+}) => (
   <TouchableOpacity style={styles.menuItem} onPress={() => navigation.navigate(screen)}>
     <View style={styles.menuItemIconContainer}>
       <Ionicons name={icon} size={24} color={theme.colors.textSecondary} />
@@ -36,30 +46,52 @@ export default function MenuScreen() {
   return (
     <ScrollView style={styles.container}>
       <View style={styles.profileSection}>
-          <View style={styles.profileRow}>
-            {/* Thay đổi màu icon người dùng */}
-            <Ionicons name="person-circle-outline" size={22} color={theme.colors.primary} style={styles.profileIcon} />
-            <Text style={styles.profileName}>
-              {`${authUser?.profile.full_name || 'Tên người dùng'} - ${authUser?.profile.username?.toUpperCase() || 'MÃ NV'}`}
-            </Text>
-          </View>
-          <View style={styles.profileRow}>
-            {/* Thay đổi màu icon bậc lương */}
-            <Ionicons name="ribbon-outline" size={20} color={theme.colors.warning} style={styles.profileIcon} />
-            <Text style={styles.profileSalary}>
-              {`Bậc lương: ${authUser?.profile.salary_level || 'N/A'}`}
-            </Text>
-          </View>
+        <View style={styles.profileRow}>
+          {/* Thay đổi màu icon người dùng */}
+          <Ionicons
+            name="person-circle-outline"
+            size={22}
+            color={theme.colors.primary}
+            style={styles.profileIcon}
+          />
+          <Text style={styles.profileName}>
+            {`${authUser?.profile.full_name || 'Tên người dùng'} - ${authUser?.profile.username?.toUpperCase() || 'MÃ NV'}`}
+          </Text>
+        </View>
+        <View style={styles.profileRow}>
+          {/* Thay đổi màu icon bậc lương */}
+          <Ionicons
+            name="ribbon-outline"
+            size={20}
+            color={theme.colors.warning}
+            style={styles.profileIcon}
+          />
+          <Text style={styles.profileSalary}>
+            {`Bậc lương: ${authUser?.profile.salary_level || 'N/A'}`}
+          </Text>
+        </View>
       </View>
 
       <View style={styles.menuItemGroup}>
-        {menuItems.map((item) => (
-          <MenuItem key={item.name} label={item.name} screen={item.screen} icon={item.icon} navigation={navigation} />
+        {menuItems.map(item => (
+          <MenuItem
+            key={item.name}
+            label={item.name}
+            screen={item.screen}
+            icon={item.icon}
+            navigation={navigation}
+          />
         ))}
       </View>
 
       <View style={styles.logoutSection}>
         <Button title="Đăng xuất" onPress={signOut} variant="danger" />
+      </View>
+
+      {/* --- PHẦN THÔNG TIN TÁC GIẢ MỚI THÊM --- */}
+      <View style={styles.authorSection}>
+        <Text style={styles.authorLabel}>Phát triển bởi</Text>
+        <Text style={styles.authorName}>Nguyễn Quốc Dương - P713</Text>
       </View>
     </ScrollView>
   );
@@ -77,7 +109,7 @@ const styles = StyleSheet.create({
     alignItems: 'flex-start',
     borderBottomWidth: 1,
     borderBottomColor: theme.colors.borderColor,
-    gap: theme.spacing['level-2'], 
+    gap: theme.spacing['level-2'],
   },
   profileRow: {
     flexDirection: 'row',
@@ -126,5 +158,23 @@ const styles = StyleSheet.create({
     marginTop: theme.spacing['level-8'],
     borderRadius: theme.borderRadius['round'],
     overflow: 'hidden',
-  }
+  },
+  // --- STYLE CHO PHẦN TÁC GIẢ ---
+  authorSection: {
+    marginTop: theme.spacing['level-5'],
+    marginBottom: theme.spacing['level-8'],
+    alignItems: 'center',
+    justifyContent: 'center',
+    opacity: 0.7, // Làm mờ nhẹ để không quá nổi bật
+  },
+  authorLabel: {
+    fontSize: theme.typography.fontSize['level-2'],
+    color: theme.colors.textSecondary,
+    marginBottom: 2,
+  },
+  authorName: {
+    fontSize: theme.typography.fontSize['level-3'],
+    color: theme.colors.textSecondary,
+    fontWeight: '600',
+  },
 });
