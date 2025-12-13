@@ -229,7 +229,7 @@ export default function StatisticsScreen() {
       <Text style={styles.statsLabel}>{label}</Text>
       <View style={styles.statsValueContainer}>
         <Text style={styles.statsValue}>
-          {typeof value === 'number' ? value.toFixed(2) : value}
+          {typeof value === 'number' ? value.toFixed(3) : value}
         </Text>
         {unit && <Text style={styles.statsUnit}>{unit}</Text>}
       </View>
