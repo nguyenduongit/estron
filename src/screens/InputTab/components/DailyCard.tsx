@@ -93,7 +93,12 @@ const DailyCard: React.FC<DailyCardProps> = ({
 
   // --- LOGIC MỚI: Xử lý màu sắc cho Tổng công ---
   const totalWork = dailyInfo.totalWorkForDay ?? 0;
-  const totalWorkColor = totalWork >= 1 ? theme.colors.success : theme.colors.danger;
+
+  // SỬA ĐỔI: Thứ 7 chỉ tiêu là 0.5 công, các ngày khác (T2-T6) là 1 công
+  const standardThreshold = dailyInfo.dayOfWeek === 'Thứ 7' ? 0.5 : 1;
+
+  const totalWorkColor =
+    totalWork >= standardThreshold ? theme.colors.success : theme.colors.danger;
 
   return (
     <View style={styles.dailyCard}>
@@ -130,7 +135,7 @@ const DailyCard: React.FC<DailyCardProps> = ({
           </View>
           {weekHasData && (
             <View style={styles.cardTotalWorkContainer}>
-              <Text style={styles.cardTotalWorkLabel}>Tổng công:{' '}</Text>
+              <Text style={styles.cardTotalWorkLabel}>Tổng công: </Text>
               {/* Áp dụng màu sắc động tại đây */}
               <Text style={[styles.cardTotalWorkValue, { color: totalWorkColor }]}>
                 {totalWork.toFixed(3)}
@@ -308,7 +313,6 @@ const styles = StyleSheet.create({
     paddingHorizontal: theme.spacing['level-4'],
     borderTopWidth: 1,
     borderTopColor: theme.colors.borderColor,
-    
   },
   addProductionButton: {
     height: 40,
