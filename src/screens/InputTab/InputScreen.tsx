@@ -157,7 +157,7 @@ export default function InputScreen({ route, navigation }: Props) {
       } else {
         setSelectedDate(initialDateString ? parseISO(initialDateString) : new Date());
         setQuotaPercentage(100);
-        setQuantity('0');
+        setQuantity('');
         setPo('');
         setBox('');
         setBatch('');
