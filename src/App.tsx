@@ -25,6 +25,22 @@ export default function App() {
         head.appendChild(link);
       }
 
+      if (!head.querySelector('link[rel="apple-touch-icon"]')) {
+        const appleIcon = document.createElement('link');
+        appleIcon.rel = 'apple-touch-icon';
+        appleIcon.sizes = '180x180';
+        appleIcon.href = '/apple-touch-icon.png';
+        head.appendChild(appleIcon);
+      }
+
+      if (!head.querySelector('link[rel="mask-icon"]')) {
+        const maskIcon = document.createElement('link');
+        maskIcon.rel = 'mask-icon';
+        maskIcon.href = '/icons/maskable-icon-512.png';
+        maskIcon.color = '#0a84ff';
+        head.appendChild(maskIcon);
+      }
+
       if (!head.querySelector('meta[name="theme-color"][content="#0a84ff"]')) {
         const meta = document.createElement('meta');
         meta.name = 'theme-color';
@@ -105,13 +121,13 @@ const styles = StyleSheet.create({
         maxWidth: WEB_MAX_WIDTH,
         height: '100%',
         // borderRadius: 16,
-        borderWidth: 1,
-        borderColor: theme.colors.borderColor,
         overflow: 'hidden',
         boxShadow: '0 10px 25px rgba(0, 0, 0, 0.5)',
       },
       native: {
         flex: 1,
+        borderWidth: 1,
+        borderColor: theme.colors.borderColor,
       },
     }),
   },
