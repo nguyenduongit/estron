@@ -15,13 +15,13 @@ export default function App() {
   useEffect(() => {
     if (Platform.OS !== 'web') return;
 
-    // inject manifest link if not present
+    // inject root manifest and PWA meta tags if not present
     try {
       const head = document.head;
-      if (!head.querySelector('link[rel="manifest"][href="/pwa/manifest.webmanifest"]')) {
+      if (!head.querySelector('link[rel="manifest"][href="/manifest.webmanifest"]')) {
         const link = document.createElement('link');
         link.rel = 'manifest';
-        link.href = '/pwa/manifest.webmanifest';
+        link.href = '/manifest.webmanifest';
         head.appendChild(link);
       }
 
@@ -32,9 +32,29 @@ export default function App() {
         head.appendChild(meta);
       }
 
-      // register service worker
+      if (!head.querySelector('meta[name="mobile-web-app-capable"][content="yes"]')) {
+        const meta = document.createElement('meta');
+        meta.name = 'mobile-web-app-capable';
+        meta.content = 'yes';
+        head.appendChild(meta);
+      }
+
+      if (!head.querySelector('meta[name="apple-mobile-web-app-capable"][content="yes"]')) {
+        const meta = document.createElement('meta');
+        meta.name = 'apple-mobile-web-app-capable';
+        meta.content = 'yes';
+        head.appendChild(meta);
+      }
+
+      if (!head.querySelector('meta[name="apple-mobile-web-app-status-bar-style"][content="default"]')) {
+        const meta = document.createElement('meta');
+        meta.name = 'apple-mobile-web-app-status-bar-style';
+        meta.content = 'default';
+        head.appendChild(meta);
+      }
+
       if ('serviceWorker' in navigator) {
-        navigator.serviceWorker.register('/pwa/sw.js').catch(() => {
+        navigator.serviceWorker.register('/sw.js').catch(() => {
           // registration failed (likely on non-https). ignore silently.
         });
       }
