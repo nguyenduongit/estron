@@ -64,7 +64,11 @@ export default function App() {
   }, []);
 
   const webAppWrapperStyle = Platform.OS === 'web'
-    ? { maxHeight: height  }
+    ? {
+        maxHeight: height,
+        paddingBottom: 'env(safe-area-inset-bottom)',
+        paddingTop: 'env(safe-area-inset-top)',
+      }
     : {};
 
   return (

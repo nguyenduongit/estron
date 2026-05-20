@@ -18,7 +18,12 @@ const StatisticsTabStack = createStackNavigator();
 const Tab = createBottomTabNavigator<BottomTabNavigatorParamList>();
 
 const commonStackScreenOptions = {
-  headerStyle: { backgroundColor: theme.colors.primary }, 
+  headerStyle: {
+    backgroundColor: theme.colors.primary,
+    borderBottomWidth: 0,
+    shadowColor: 'transparent',
+    elevation: 0,
+  },
   headerTintColor: theme.colors.textOnPrimary, 
   headerTitleStyle: { fontWeight: 'bold' as 'bold', fontSize: theme.typography.fontSize['level-3'] }, 
   headerTitleAlign: 'center' as 'center',
@@ -82,7 +87,9 @@ export default function AppNavigator() {
         headerShown: false, 
         tabBarStyle: {
           backgroundColor: theme.colors.background2, 
-          borderTopColor: theme.colors.borderColor, 
+          borderTopColor: theme.colors.borderColor,
+          paddingBottom: Platform.OS === 'web' ? 'env(safe-area-inset-bottom)' : 0,
+          height: Platform.OS === 'web' ? 70 : undefined,
         }
       })}
     >

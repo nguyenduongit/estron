@@ -15,7 +15,12 @@ import GeneralSettingsScreen from './GeneralSettingsScreen';
 const MenuStack = createStackNavigator<MenuStackNavigatorParamList>();
 
 const commonStackScreenOptions = {
-    headerStyle: { backgroundColor: theme.colors.primary },
+    headerStyle: {
+      backgroundColor: theme.colors.primary,
+      borderBottomWidth: 0,
+      shadowColor: 'transparent',
+      elevation: 0,
+    },
     headerTintColor: theme.colors.textOnPrimary,
     headerTitleStyle: { fontWeight: 'bold' as 'bold', fontSize: theme.typography.fontSize['level-3'] },
     headerTitleAlign: 'center' as 'center',
