@@ -50,6 +50,7 @@ const QUOTA_PERCENTAGE_OPTIONS = [
   { label: '60%', value: 60 },
   { label: '55%', value: 55 }, 
   { label: '50%', value: 50 },
+  { label: '45%', value: 45 },
   { label: '40%', value: 40 },
 ];
 
